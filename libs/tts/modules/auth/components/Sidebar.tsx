@@ -30,6 +30,18 @@ interface SidebarUserResponse {
   };
 }
 
+// Danh sách các nút menu tạm thời ẩn (giữ nguyên logic code, chỉ ẩn khỏi giao diện)
+const HIDDEN_MENU_BUTTONS: string[] = [
+  'Quản lý người dùng',
+  'Quản lý doanh nghiệp',
+  'Kỳ báo cáo',
+  'Danh mục chung',
+  'TNLĐ theo HĐLĐ',
+];
+
+// Cấu hình: true = ẩn nhóm cha nếu không có con; false = vẫn luôn hiển thị nhóm cha
+const HIDE_EMPTY_PARENT_GROUPS = false;
+
 export const Sidebar = () => {
   const { logout, avatar, fullName, setAvatar, setFullName, accountType } = useAuthStore();
   const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
@@ -305,8 +317,14 @@ try {
         </div>
 
     <nav className="p-2.5 space-y-0.5 text-xs select-none">
-    {menuItems.map((item, index) => {
-        const hasChildren = !!item.children;
+    {menuItems
+      .map((item) => ({
+        ...item,
+        children: item.children?.filter((child) => !HIDDEN_MENU_BUTTONS.includes(child)),
+      }))
+      .filter((item) => !HIDE_EMPTY_PARENT_GROUPS || !item.children || item.children.length > 0 || item.href)
+      .map((item, index) => {
+        const hasChildren = !!item.children && item.children.length > 0;
         const isMenuOpen = item.key ? openMenus[item.key] : false;
         const isItemActive = item.href ? pathname.startsWith(item.href) : (hasChildren && isMenuOpen && !isCollapsed);
 
