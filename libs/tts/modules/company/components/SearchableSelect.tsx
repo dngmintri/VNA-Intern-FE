@@ -15,6 +15,7 @@ export interface SearchableSelectProps {
   size?: 'sm' | 'md' | 'lg';
   className?: string;
   disabled?: boolean;
+  error?: string;
 }
 
 export const SearchableSelect: React.FC<SearchableSelectProps> = ({
@@ -25,6 +26,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   size = 'sm',
   className = '',
   disabled = false,
+  error,
 }) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -82,7 +84,9 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     <div ref={containerRef} className={`relative w-full ${className}`}>
       <div
         onClick={() => !disabled && setIsOpen((prev) => !prev)}
-        className={`w-full px-2 ${py} border border-gray-200 rounded ${textClass} font-normal text-gray-700 bg-white cursor-pointer flex items-center justify-between transition-colors hover:border-gray-400 focus:outline-none ${
+        className={`w-full px-2 ${py} border ${
+          error ? 'border-red-500' : 'border-gray-200'
+        } rounded ${textClass} font-normal text-gray-700 bg-white cursor-pointer flex items-center justify-between transition-colors hover:border-gray-400 focus:outline-none ${
           disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''
         }`}
       >
