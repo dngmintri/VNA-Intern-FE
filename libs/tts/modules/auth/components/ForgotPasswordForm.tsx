@@ -28,7 +28,7 @@ export const ForgotPasswordForm = () => {
   const [otp, setOtp] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [timer, setTimer] = useState(60);
+  const [timer, setTimer] = useState(300);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -55,7 +55,7 @@ export const ForgotPasswordForm = () => {
       const res = await forgotPasswordApi({ email });
       toast.success(res.message || 'Mã xác thực đã được gửi thành công!');
       setStep(2);
-      setTimer(60);
+      setTimer(300);
     } catch (err: unknown) {
       const axiosError = err as AxiosError<{ message?: string }>;
       let errMsg = axiosError.response?.data?.message || 'Không thể gửi yêu cầu quên mật khẩu';
@@ -267,7 +267,7 @@ export const ForgotPasswordForm = () => {
 
           <div className="text-center pt-2">
             <div className="text-[#2F6BFF] font-bold text-sm tracking-wider">
-              00:{timer < 10 ? `0${timer}` : timer}
+              {String(Math.floor(timer / 60)).padStart(2, '0')}:{String(timer % 60).padStart(2, '0')}
             </div>
             <div className="text-xs text-gray-500 mt-1">
               Chưa nhận được mã?{' '}
@@ -279,7 +279,7 @@ export const ForgotPasswordForm = () => {
                   try {
                     const res = await forgotPasswordApi({ email });
                     toast.success(res.message || 'Đã gửi lại mã xác thực!');
-                    setTimer(60);
+                    setTimer(300);
                   } catch (err: unknown) {
                     const axiosError = err as AxiosError<{ message?: string }>;
                     const errMsg = axiosError.response?.data?.message || 'Gửi lại mã thất bại';
