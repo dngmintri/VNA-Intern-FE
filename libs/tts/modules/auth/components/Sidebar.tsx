@@ -32,8 +32,8 @@ interface SidebarUserResponse {
 
 // Danh sách các nút menu tạm thời ẩn (giữ nguyên logic code, chỉ ẩn khỏi giao diện)
 const HIDDEN_MENU_BUTTONS: string[] = [
-  'Quản lý người dùng',
-  'Quản lý doanh nghiệp',
+  // 'Quản lý người dùng',
+  // 'Quản lý doanh nghiệp',
   'Kỳ báo cáo',
   'Danh mục chung',
   'TNLĐ theo HĐLĐ',
@@ -41,6 +41,15 @@ const HIDDEN_MENU_BUTTONS: string[] = [
 
 // Cấu hình: true = ẩn nhóm cha nếu không có con; false = vẫn luôn hiển thị nhóm cha
 const HIDE_EMPTY_PARENT_GROUPS = false;
+
+const formatAvatarUrl = (url: string | null | undefined): string => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:')) {
+    return url;
+  }
+  const backendBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`;
+};
 
 export const Sidebar = () => {
   const { logout, avatar, fullName, setAvatar, setFullName, accountType } = useAuthStore();
@@ -99,7 +108,7 @@ export const Sidebar = () => {
         if (userData) {
           const name = userData.fullName || userData.username || localStorage.getItem('current_username') || 'Người dùng';
           setFullName(name);
-          setAvatar(userData.avatar || null);
+          setAvatar(formatAvatarUrl(userData.avatar) || null);
         } else {
           const currentUsername = localStorage.getItem('current_username') || 'Người dùng';
           setFullName(currentUsername);
@@ -478,7 +487,7 @@ try {
             <div className="w-9 h-9 rounded-full bg-gray-200 border border-white/20 flex-shrink-0 flex items-center justify-center text-[#112E83] font-bold text-sm shadow-inner overflow-hidden relative">
               <Image 
                 key={avatar || "default"}
-                src={avatar || "/avatar-sample.png"} 
+                src={formatAvatarUrl(avatar) || "/avatar-sample.png"} 
                 alt="Avatar"
                 fill
                 sizes="36px"

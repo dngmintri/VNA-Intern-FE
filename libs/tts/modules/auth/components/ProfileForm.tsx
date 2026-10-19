@@ -50,10 +50,20 @@
 
   const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+  const formatAvatarUrl = (url: string | null | undefined): string => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:')) {
+      return url;
+    }
+    const backendBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
   export const ProfileForm = () => {
     const { setAvatar, setFullName } = useAuthStore();
     const [isFetching, setIsFetching] = useState<boolean>(true); 
     const [isSaving, setIsSaving] = useState<boolean>(false);     
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [provinces, setProvinces] = useState<Province[]>([]);
@@ -164,7 +174,7 @@ const { register, handleSubmit, watch, setValue, reset, formState: { errors } } 
             wardId: wardIdStr,
             address: profileData.streetAddress || profileData.address || '',
             isActive: profileData.isActive ?? true,
-            avatarUrl: profileData.avatar || '',
+            avatarUrl: formatAvatarUrl(profileData.avatar),
           };
 
           setInitialProfileData(dataToReset);
@@ -232,12 +242,32 @@ const { register, handleSubmit, watch, setValue, reset, formState: { errors } } 
     const onSubmit = async (data: ProfileInput) => {
       setIsSaving(true);
       try {
+        let avatarToSave = data.avatarUrl;
+
+        // Nếu có chọn file ảnh mới -> upload lên backend lưu vào uploads/avatars
+        if (selectedFile) {
+          const formData = new FormData();
+          formData.append('file', selectedFile);
+          const uploadRes = await api.post('/users/avatar', formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          });
+          const uploadData = uploadRes.data?.data || uploadRes.data;
+          if (uploadData?.avatar) {
+            avatarToSave = uploadData.avatar;
+          }
+          setSelectedFile(null);
+        } else if (!data.avatarUrl) {
+          avatarToSave = null;
+        }
+
         const currentProvinceId = watch('provinceId');
         const currentWardId = watch('wardId');
-        const selectedProv = provinces.find(p => String(p.id) === String(currentProvinceId));
-        const selectedW = wards.find(w => String(w.id) === String(currentWardId));
+        const selectedProv = provinces.find((p) => String(p.id) === String(currentProvinceId));
+        const selectedW = wards.find((w) => String(w.id) === String(currentWardId));
 
-        const payload = {
+        const payload: Record<string, unknown> = {
           fullName: data.fullName || undefined,
           dateOfBirth: data.dateOfBirth || null,
           gender: (data.gender as 'male' | 'female') || undefined,
@@ -246,8 +276,21 @@ const { register, handleSubmit, watch, setValue, reset, formState: { errors } } 
           streetAddress: data.address?.trim() || undefined,
         };
 
+        if (avatarToSave !== undefined) {
+          const relativeAvatar = avatarToSave
+            ? avatarToSave.replace(/^https?:\/\/[^/]+/, '')
+            : null;
+          payload.avatar = relativeAvatar && !relativeAvatar.startsWith('blob:') && !relativeAvatar.startsWith('data:')
+            ? relativeAvatar
+            : (avatarToSave ? avatarToSave : null);
+        }
+
         await api.patch('/users/profile', payload);
         toast.success('Cập nhật thông tin hồ sơ tài khoản thành công!');
+
+        const displayAvatar = formatAvatarUrl((payload.avatar as string) || avatarToSave);
+        setValue('avatarUrl', displayAvatar);
+        setAvatar(displayAvatar || null);
 
         if (initialProfileData) {
           setInitialProfileData({
@@ -258,11 +301,10 @@ const { register, handleSubmit, watch, setValue, reset, formState: { errors } } 
             address: data.address || initialProfileData.address,
             provinceId: currentProvinceId ? String(currentProvinceId) : initialProfileData.provinceId,
             wardId: currentWardId ? String(currentWardId) : initialProfileData.wardId,
-            avatarUrl: data.avatarUrl || initialProfileData.avatarUrl
+            avatarUrl: displayAvatar,
           });
         }
 
-        setAvatar(data.avatarUrl || null);
         if (data.fullName) {
           setFullName(data.fullName);
         }
@@ -287,17 +329,15 @@ const { register, handleSubmit, watch, setValue, reset, formState: { errors } } 
           toast.error('Kích thước ảnh tối đa là 5MB');
           return;
         }
-        
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64String = reader.result as string;
-          setValue('avatarUrl', base64String); 
-        };
-        reader.readAsDataURL(file);
+        setSelectedFile(file);
+        const previewUrl = URL.createObjectURL(file);
+        setValue('avatarUrl', previewUrl);
+        setImgError(false);
       }
     };
     const handleRemoveAvatar = (e: React.MouseEvent) => {
       e.stopPropagation();
+      setSelectedFile(null);
       setValue('avatarUrl', '');
       toast.success('Đã gỡ ảnh đại diện tạm thời! Bấm "Lưu" để cập nhật chính thức.');
     };

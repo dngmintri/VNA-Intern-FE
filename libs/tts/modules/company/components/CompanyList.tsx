@@ -137,10 +137,38 @@ export const CompanyList = () => {
   const fetchCompanies = async () => {
     setIsLoading(true);
     try {
-      const response = await api.get<Company[]>('/company/companies');
-      if (response.data) {
-        setCompanies(response.data);
-      }
+      const response = await api.get<{ data?: { items: any[]; count: number } } & any>('/business');
+      const responseData = response.data;
+      const rawList = responseData?.data?.items || responseData?.items || (Array.isArray(responseData) ? responseData : []);
+
+      const mappedList: Company[] = rawList.map((b: any) => ({
+        id: b.id,
+        accountId: b.id,
+        companyName: b.name,
+        foreignCompanyName: b.foreignName,
+        taxCode: b.taxCode,
+        businessTypeId: b.businessTypeId,
+        businessIndustryId: b.businessIndustryId,
+        licenseIssueDate: b.licenseDate,
+        provinceDkkdId: b.registeredProvince,
+        wardDkkdId: b.registeredDistrict,
+        addressDkkd: b.address,
+        businessPhone: b.officePhone,
+        representativeName: b.representativeName,
+        representativePhone: b.representativePhone,
+        provinceHdkdId: b.operatingProvince,
+        wardHdkdId: b.operatingDistrict,
+        addressHdkd: b.businessLocation,
+        gpkdFilePath: null,
+        gtkFilePath: null,
+        createdAt: b.createdAt,
+        updatedAt: b.updatedAt,
+        status: b.isActive ? 'ACTIVE' : 'INACTIVE',
+        businessType: b.businessType,
+        businessIndustry: b.businessIndustry,
+      }));
+
+      setCompanies(mappedList);
     } catch (error: unknown) {
       const axiosError = error as AxiosError<{ message?: string }>;
       const msg = axiosError.response?.data?.message || 'Không thể tải danh sách doanh nghiệp';
@@ -153,11 +181,11 @@ export const CompanyList = () => {
   const fetchMetadata = async () => {
     try {
       const [btRes, biRes] = await Promise.all([
-        api.get<FilterItem[]>('/company/business-type'),
-        api.get<FilterItem[]>('/company/business-industry'),
+        api.get<{ data?: FilterItem[] } & FilterItem[]>('/business-types/all'),
+        api.get<{ data?: FilterItem[] } & FilterItem[]>('/business-industries/roots'),
       ]);
-      setBusinessTypes(btRes.data || []);
-      setBusinessIndustries(biRes.data || []);
+      setBusinessTypes(btRes.data?.data || btRes.data || []);
+      setBusinessIndustries(biRes.data?.data || biRes.data || []);
     } catch (err) {
       console.error('Lỗi tải dữ liệu lọc:', err);
     }
@@ -235,12 +263,11 @@ export const CompanyList = () => {
 
   const handleToggleStatus = async (taxCode: string, currentStatus: string) => {
     const isActivating = currentStatus !== 'ACTIVE';
-    const endpoint = isActivating 
-      ? `/company/${taxCode}/unban-company` 
-      : `/company/${taxCode}/ban-company`;
-      
+    const company = companies.find((c) => c.taxCode === taxCode);
+    if (!company) return;
+
     try {
-      await api.post(endpoint);
+      await api.patch(`/business/${company.id}`, { isActive: isActivating });
       setCompanies((prev) =>
         prev.map((c) => (c.taxCode === taxCode ? { ...c, status: isActivating ? 'ACTIVE' : 'INACTIVE' } : c))
       );
@@ -253,10 +280,38 @@ export const CompanyList = () => {
   const handleViewDetails = async (taxCode: string) => {
     setIsLoadingDetails(true);
     setShowDetailsModal(true);
+    const company = companies.find((c) => c.taxCode === taxCode);
+    if (!company) {
+      setShowDetailsModal(false);
+      setIsLoadingDetails(false);
+      return;
+    }
+
     try {
-      const res = await api.get<{ data: CompanyProfile }>(`/company/${taxCode}/company-profile`);
-      if (res.data?.data) {
-        setDetailsData(res.data.data);
+      const res = await api.get<{ data?: any } & any>(`/business/${company.id}`);
+      const b = res.data?.data || res.data;
+      if (b) {
+        setDetailsData({
+          taxCode: b.taxCode,
+          companyName: b.name,
+          foreignCompanyName: b.foreignName,
+          licenseIssueDate: b.licenseDate,
+          businessType: b.businessType?.name || '—',
+          businessIndustry: b.businessIndustry?.name || '—',
+          email: b.email,
+          status: b.isActive ? 'ACTIVE' : 'INACTIVE',
+          provinceDKKD: b.registeredProvince,
+          wardDKKD: b.registeredDistrict,
+          addressDKKD: b.address,
+          provinceHDKD: b.operatingProvince,
+          wardHDKD: b.operatingDistrict,
+          addressHDKD: b.businessLocation,
+          representativeName: b.representativeName,
+          representativePhone: b.representativePhone,
+          businessPhone: b.officePhone,
+          gpkdFile: null,
+          gtkFile: null,
+        });
       }
     } catch (err) {
       console.error('Lỗi lấy chi tiết doanh nghiệp:', err);
@@ -405,10 +460,12 @@ export const CompanyList = () => {
   };
 
   const handleDeleteCompany = async () => {
+    const target = companies.find((c) => c.taxCode === taxCodeToDelete);
+    if (!target) return;
     setIsDeleting(true);
     try {
-      const response = await api.delete<{ message?: string }>(`/company/${taxCodeToDelete}`);
-      toast.success(response.data?.message || 'Xóa doanh nghiệp thành công!');
+      await api.delete(`/business/${target.id}`);
+      toast.success('Xóa doanh nghiệp thành công!');
       setShowDeleteModal(false);
       fetchCompanies();
     } catch (error: unknown) {
@@ -421,54 +478,11 @@ export const CompanyList = () => {
   };
 
   const handleGpkdUploadClick = (taxCode: string) => {
-    setGpkdUploadTaxCode(taxCode);
-    if (gpkdFileInputRef.current) {
-      gpkdFileInputRef.current.value = '';
-    }
-    setTimeout(() => {
-      gpkdFileInputRef.current?.click();
-    }, 50);
+    toast('Chức năng tải file đính kèm đang được hoàn thiện ở Backend', { icon: 'ℹ️' });
   };
 
   const handleGpkdFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!gpkdUploadTaxCode) return;
-
-    setIsGpkdUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const targetTaxCode = gpkdUploadTaxCode;
-
-    try {
-      const uploadRes = await api.post<{ data: { filePath: string } }>('/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      if (!uploadRes.data?.data?.filePath) {
-        toast.error('Lỗi phản hồi từ server tải file');
-        return;
-      }
-
-      const filename = uploadRes.data.data.filePath.split('/').pop() || '';
-
-      await api.patch(`/company/${targetTaxCode}`, {
-        business_license_file_url: filename,
-      });
-
-      toast.success('Tải lên Giấy phép ĐKKD thành công!');
-      fetchCompanies();
-    } catch (err: unknown) {
-      const axiosError = err as AxiosError<{ message?: string }>;
-      const msg = axiosError.response?.data?.message || 'Tải lên Giấy phép ĐKKD thất bại';
-      toast.error(msg);
-    } finally {
-      setIsGpkdUploading(false);
-      setGpkdUploadTaxCode(null);
-    }
+    // Không bắt buộc tải file
   };
 
   const handleBatchDelete = async () => {
@@ -478,8 +492,9 @@ export const CompanyList = () => {
     const toastId = toast.loading(`Đang xóa ${selectedTaxCodes.length} doanh nghiệp...`);
 
     try {
+      const targets = companies.filter((c) => selectedTaxCodes.includes(c.taxCode));
       await Promise.all(
-        selectedTaxCodes.map((taxCode) => api.delete(`/company/${taxCode}`))
+        targets.map((c) => api.delete(`/business/${c.id}`))
       );
       toast.success(`Đã xóa thành công ${selectedTaxCodes.length} doanh nghiệp!`, { id: toastId });
       setSelectedTaxCodes([]);

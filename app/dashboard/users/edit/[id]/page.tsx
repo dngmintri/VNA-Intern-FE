@@ -8,7 +8,7 @@ export default function EditUserPage() {
   const router = useRouter();
   const params = useParams();
   
-  const userId = params?.id ? Number(params.id) : null; 
+  const userId = params?.id ? String(params.id) : null; 
 
   return (
     <div className="flex-1 flex flex-col min-w-0 ">

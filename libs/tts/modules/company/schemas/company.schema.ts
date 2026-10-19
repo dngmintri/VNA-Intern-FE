@@ -107,7 +107,7 @@ export const companySchema = z.object({
       { message: 'Số điện thoại người đại diện không hợp lệ (di động 10 số, bắt đầu bằng 03/05/07/08/09)' }
     )
     .or(z.literal('')),
-  business_license_file_url: z.string().min(1, 'Vui lòng tải lên giấy phép đăng ký kinh doanh'),
+  business_license_file_url: z.string().optional().nullable().or(z.literal('')),
   other_document_file_url: z.string().nullable().optional(),
 });
 
