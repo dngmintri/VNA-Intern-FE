@@ -16,7 +16,7 @@ interface UserListProps {
 
 export const UserList = ({ onViewDeleted }: UserListProps) => {
   const { hasPermission } = useHasPermission();
-  const colSpanCount = 6 + (hasPermission('DELETE_USER') ? 1 : 0) + (hasPermission('UPDATE_USER') ? 1 : 0);
+  const colSpanCount = 8;
   const [users, setUsers] = useState<UserItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const router = useRouter();
@@ -44,7 +44,7 @@ export const UserList = ({ onViewDeleted }: UserListProps) => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
 
-  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
+  const [selectedUserIds, setSelectedUserIds] = useState<(string | number)[]>([]);
 
   const [showResetPwdModal, setShowResetPwdModal] = useState<boolean>(false);
   const [targetResetUsername, setTargetResetUsername] = useState<string>('');
@@ -52,7 +52,7 @@ export const UserList = ({ onViewDeleted }: UserListProps) => {
   const [pwdError, setPwdError] = useState<string>('');
 
   const [showTextPassword, setShowTextPassword] = useState<boolean>(false);
-  const [targetResetId, setTargetResetId] = useState<number | null>(null);
+  const [targetResetId, setTargetResetId] = useState<string | number | null>(null);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -61,26 +61,31 @@ export const UserList = ({ onViewDeleted }: UserListProps) => {
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      const response = await api.get<BackendUserListResponse>('/user');
+      const response = await api.get<BackendUserListResponse>('/users');
       const responseData = response.data;
+      const rawList = responseData?.data?.items || responseData?.items || (Array.isArray(responseData) ? responseData : []);
 
-      if (!responseData || !Array.isArray(responseData.items)) {
+      if (!Array.isArray(rawList)) {
         setUsers([]);
         return;
       }
 
-      const mappedUsers: UserItem[] = responseData.items.map((user) => ({
+      const mappedUsers: UserItem[] = rawList.map((user: any) => ({
         id: user.id,
-        accountId: user.accountId,
+        accountId: user.id,
         fullName: user.fullName || '---',
         username: user.username,
         email: user.email,
-        role: user.role?.name || '---',
-        roleId: user.role?.id,
+        role: user.role === 'ADMIN' ? 'Quản trị viên' : (user.role === 'DOANH_NGHIEP' ? 'Doanh nghiệp' : (user.role?.name || user.role || 'Người dùng')),
+        roleId: user.roleId || user.role?.id,
         position: user.position || '---',
-        isActive: user.isActive,
+        isActive: user.isActive !== undefined ? user.isActive : true,
+        gender: user.gender,
+        dateOfBirth: user.dateOfBirth,
+        province: user.province,
+        district: user.district,
+        streetAddress: user.streetAddress,
       }));
-    mappedUsers.sort((a, b) => b.id - a.id);
 
       setUsers(mappedUsers);
     } catch (error: unknown) {
@@ -170,14 +175,14 @@ const handlePreviewExcel = async (e: React.MouseEvent) => {
 
       if (rawItems.length > 0) {
       const mappedPreview: UserPreviewItem[] = rawItems.map((item, index) => {
-        const u = item as Record<string, unknown> & { role?: Record<string, unknown> };
+        const u = item as any;
         return {
           id: typeof u.id === 'number' ? u.id : index + 1,
           accountId: typeof u.accountId === 'number' ? u.accountId : 0,
           fullName: typeof u.fullName === 'string' ? u.fullName : '---',
           username: typeof u.username === 'string' ? u.username : '---',
           email: typeof u.email === 'string' ? u.email : '---',
-          role: typeof u.roleCode === 'string' ? u.roleCode : (typeof u.role?.name === 'string' ? u.role.name : '---'),
+          role: (u.role === 'ADMIN' || u.roleCode === 'ADMIN') ? 'Quản trị viên' : ((u.role === 'DOANH_NGHIEP' || u.roleCode === 'DOANH_NGHIEP') ? 'Doanh nghiệp' : (typeof u.roleCode === 'string' ? u.roleCode : (typeof u.role?.name === 'string' ? u.role.name : (typeof u.role === 'string' ? u.role : '---')))),
           position: typeof u.position === 'string' ? u.position : '---',
           isActive: typeof u.isActive === 'boolean' ? u.isActive : true,
           rowNumber: typeof u.rowNumber === 'number' ? u.rowNumber : undefined,
@@ -410,55 +415,60 @@ const handleBulkDelete = async (e: React.MouseEvent) => {
     }
   };
 
+  const handleExportData = () => {
+    if (filteredUsers.length === 0) {
+      toast.error('Không có dữ liệu để xuất');
+      return;
+    }
+    const headers = ['Họ và tên', 'Tài khoản', 'Email', 'Vai trò', 'Chức danh', 'Trạng thái'];
+    const rows = filteredUsers.map((u) => [
+      `"${(u.fullName || '').replace(/"/g, '""')}"`,
+      `"${(u.username || '').replace(/"/g, '""')}"`,
+      `"${(u.email || '').replace(/"/g, '""')}"`,
+      `"${(u.role || '').replace(/"/g, '""')}"`,
+      `"${(u.position || '').replace(/"/g, '""')}"`,
+      `"${u.isActive ? 'Hoạt động' : 'Khóa'}"`,
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Danh_sach_nguoi_dung_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success('Xuất dữ liệu người dùng thành công!');
+  };
+
   return (
     <div className="flex-1 flex flex-col bg-[#F4F6F9] min-h-screen font-sans">
       
-      <div className="bg-white px-6 py-3 flex items-center justify-between border-b border-gray-200 shadow-sm flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-gray-400">Hệ thống</span>
-          <span className="text-xs text-gray-400">❯</span>
-          <h1 className="text-sm font-bold text-gray-800">Danh sách người dùng</h1>
-        </div>
+      <div className="bg-white px-6 py-3.5 flex items-center justify-between border-b border-gray-100 flex-shrink-0">
+        <h1 className="text-sm font-bold text-gray-800">Danh sách người dùng</h1>
         
         <div className="flex items-center gap-2.5">
-          {hasPermission('CREATE_USER') && (
-            <button
-              type="button"
-              onClick={() => setShowImportModal(true)}
-              className="px-4 py-1.5 border border-emerald-600 hover:bg-emerald-50 text-emerald-600 rounded-lg text-xs font-semibold shadow-sm transition-colors flex items-center gap-1.5 bg-white cursor-pointer"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-              </svg>
-              Nhập từ Excel
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setShowImportModal(true)}
+            className="px-3.5 py-1.5 border border-[#2F6BFF] hover:bg-blue-50 text-[#2F6BFF] rounded-md text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 bg-white cursor-pointer"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+            Import
+          </button>
           
-          {hasPermission('CREATE_USER') && (
-            <button
-              type="button"
-              onClick={() => router.push('/dashboard/users/create')}
-              className="px-4 py-1.5 bg-[#2F6BFF] hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v16m7.5-8h-16" />
-              </svg>
-              Thêm mới
-            </button>
-          )}
-
-          {hasPermission('DELETE_USER') && (
-            <button
-              type="button"
-              onClick={() => router.push('/dashboard/users/deleted')}
-              className="px-4 py-1.5 border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-semibold shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer"
-            >
-              <svg className="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-              Tài khoản đã xóa
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => router.push('/dashboard/users/create')}
+            className="px-3.5 py-1.5 bg-[#2F6BFF] hover:bg-blue-700 text-white rounded-md text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v16m7.5-8h-16" />
+            </svg>
+            Thêm mới
+          </button>
         </div>
       </div>
 
@@ -468,130 +478,101 @@ const handleBulkDelete = async (e: React.MouseEvent) => {
             <table className="w-full border-collapse text-left text-xs">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100 text-gray-500 font-bold uppercase tracking-normal text-[10px]">
-                  {hasPermission('DELETE_USER') && (
-                    <th className="py-3 px-2 text-center w-10">
-                      <div className="flex items-center justify-center">
-                        <input
-                          type="checkbox"
-                          checked={paginatedUsers.length > 0 && paginatedUsers.every(u => selectedUserIds.includes(u.id))}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedUserIds(paginatedUsers.map(u => u.id));
-                            } else {
-                              setSelectedUserIds([]);
-                            }
-                          }}
-                          className="w-3.5 h-3.5 border-gray-300 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
-                        />
-                      </div>
-                    </th>
-                  )}
-                  {hasPermission('UPDATE_USER') && <th className="py-3 px-2 w-24 text-center">Thao tác</th>}
+                  <th className="py-3 px-3 text-center w-10">
+                    <div className="flex items-center justify-center">
+                      <input
+                        type="checkbox"
+                        checked={paginatedUsers.length > 0 && paginatedUsers.every(u => selectedUserIds.includes(u.id))}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedUserIds(paginatedUsers.map(u => u.id));
+                          } else {
+                            setSelectedUserIds([]);
+                          }
+                        }}
+                        className="w-3.5 h-3.5 border-gray-300 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                    </div>
+                  </th>
+                  <th className="py-3 px-1 text-center w-14"></th>
                   <th className="py-3 px-3">Họ và tên</th>
                   <th className="py-3 px-3">Tài khoản</th>
                   <th className="py-3 px-3">Email</th>
                   <th className="py-3 px-3 w-40">Vai trò</th>
                   <th className="py-3 px-3 w-40">Chức danh</th>
-                  <th className="py-3 px-2 w-24 text-center">Trạng thái</th>
+                  <th className="py-3 px-3 w-28 text-center">Trạng thái</th>
                 </tr>
                 
                 <tr className="bg-gray-50/50 border-b border-gray-100">
-                  {hasPermission('DELETE_USER') && (
-                    <th className="py-2 px-2 text-center">
-                      {!hasPermission('UPDATE_USER') && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSearchFullName('');
-                            setSearchUsername('');
-                            setSearchEmail('');
-                            setSelectedRole('');
-                            setSearchPosition(''); 
-                            setSelectedStatus('');
-                            toast.success('Đã làm mới bộ lọc');
-                          }}
-                          className="p-1 text-gray-400 hover:text-blue-500 rounded hover:bg-gray-200/50 transition-colors flex items-center justify-center mx-auto"
-                          title="Xóa bộ lọc"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                          </svg>
-                        </button>
-                      )}
-                    </th>
-                  )}
-                  {hasPermission('UPDATE_USER') && (
-                    <th className="py-2 px-2 text-center">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSearchFullName('');
-                          setSearchUsername('');
-                          setSearchEmail('');
-                          setSelectedRole('');
-                          setSearchPosition(''); 
-                          setSelectedStatus('');
-                          toast.success('Đã làm mới bộ lọc');
-                        }}
-                        className="p-1 text-gray-400 hover:text-blue-500 rounded hover:bg-gray-200/50 transition-colors flex items-center justify-center mx-auto"
-                        title="Xóa bộ lọc"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                        </svg>
-                      </button>
-                    </th>
-                  )}
+                  <th className="py-2 px-3 text-center"></th>
+                  <th className="py-2 px-1 text-center"></th>
                   <th className="py-2 px-3">
-                    <div className="flex items-center gap-1.5">
-                      <input type="text" value={searchFullName} onChange={(e) => setSearchFullName(e.target.value)} placeholder="Tìm họ tên..." className="flex-1 px-2 py-1 border border-gray-200 rounded text-[11px] font-normal text-gray-800 bg-white focus:outline-none focus:border-blue-500" />
-                      {!hasPermission('UPDATE_USER') && !hasPermission('DELETE_USER') && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSearchFullName('');
-                            setSearchUsername('');
-                            setSearchEmail('');
-                            setSelectedRole('');
-                            setSearchPosition(''); 
-                            setSelectedStatus('');
-                            toast.success('Đã làm mới bộ lọc');
-                          }}
-                          className="p-1 text-gray-400 hover:text-blue-500 rounded hover:bg-gray-200/50 transition-colors flex items-center justify-center flex-shrink-0"
-                          title="Xóa bộ lọc"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                          </svg>
-                        </button>
-                      )}
+                    <input
+                      type="text"
+                      value={searchFullName}
+                      onChange={(e) => setSearchFullName(e.target.value)}
+                      placeholder="Tìm họ tên..."
+                      className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-[11px] font-normal text-gray-800 bg-white focus:outline-none focus:border-blue-500 shadow-2xs"
+                    />
+                  </th>
+                  <th className="py-2 px-3">
+                    <input
+                      type="text"
+                      value={searchUsername}
+                      onChange={(e) => setSearchUsername(e.target.value)}
+                      placeholder="Tìm tài khoản..."
+                      className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-[11px] font-normal text-gray-800 bg-white focus:outline-none focus:border-blue-500 shadow-2xs"
+                    />
+                  </th>
+                  <th className="py-2 px-3">
+                    <input
+                      type="text"
+                      value={searchEmail}
+                      onChange={(e) => setSearchEmail(e.target.value)}
+                      placeholder="Tìm email..."
+                      className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-[11px] font-normal text-gray-800 bg-white focus:outline-none focus:border-blue-500 shadow-2xs"
+                    />
+                  </th>
+                  <th className="py-2 px-3">
+                    <div className="relative">
+                      <select
+                        value={selectedRole}
+                        onChange={(e) => setSelectedRole(e.target.value)}
+                        className="w-full appearance-none px-2.5 py-1.5 border border-gray-200 rounded text-[11px] font-normal text-gray-700 bg-white focus:outline-none focus:border-blue-500 shadow-2xs cursor-pointer"
+                      >
+                        <option value="">Vai trò</option>
+                        <option value="Quản trị viên">Quản trị viên</option>
+                        <option value="Doanh nghiệp">Doanh nghiệp</option>
+                      </select>
+                      <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-[9px]">
+                        ▼
+                      </span>
                     </div>
                   </th>
                   <th className="py-2 px-3">
-                    <input type="text" value={searchUsername} onChange={(e) => setSearchUsername(e.target.value)} placeholder="Tìm tài khoản..." className="w-full px-2 py-1 border border-gray-200 rounded text-[11px] font-normal text-gray-800 bg-white focus:outline-none focus:border-blue-500" />
+                    <input
+                      type="text"
+                      value={searchPosition}
+                      onChange={(e) => setSearchPosition(e.target.value)}
+                      placeholder="Tìm chức danh..."
+                      className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-[11px] font-normal text-gray-800 bg-white focus:outline-none focus:border-blue-500 shadow-2xs"
+                    />
                   </th>
-                  <th className="py-2 px-3">
-                    <input type="text" value={searchEmail} onChange={(e) => setSearchEmail(e.target.value)} placeholder="Tìm email..." className="w-full px-2 py-1 border border-gray-200 rounded text-[11px] font-normal text-gray-800 bg-white focus:outline-none focus:border-blue-500" />
-                  </th>
-                  <th className="py-2 px-3">
-                    <select value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)} className="w-full px-1.5 py-1 border border-gray-200 rounded text-[11px] font-normal text-gray-700 bg-white focus:outline-none focus:border-blue-500">
-                      <option value="">Vai trò</option>
-                      <option value="Quản trị viên">Quản trị viên</option>
-                      <option value="Quản lý">Quản lý</option>
-                      <option value="Nhân viên">Nhân viên</option>
-                      <option value="Kiểm toán viên">Kiểm toán viên</option>
-                      <option value="Người xem">Người xem</option>
-                    </select>
-                  </th>
-                  <th className="py-2 px-3">
-                    <input type="text" value={searchPosition} onChange={(e) => setSearchPosition(e.target.value)} placeholder="Tìm chức danh..." className="w-full px-2 py-1 border border-gray-200 rounded text-[11px] font-normal text-gray-800 bg-white focus:outline-none focus:border-blue-500" />
-                  </th>
-                  <th className="py-2 px-2">
-                    <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} className="w-full px-1 py-1 border border-gray-200 rounded text-[11px] font-normal text-gray-700 bg-white focus:outline-none focus:border-blue-500">
-                      <option value="">Trạng thái</option>
-                      <option value="ACTIVE">Hoạt động</option>
-                      <option value="INACTIVE">Khóa</option>
-                    </select>
+                  <th className="py-2 px-3 text-center">
+                    <div className="relative">
+                      <select
+                        value={selectedStatus}
+                        onChange={(e) => setSelectedStatus(e.target.value)}
+                        className="w-full appearance-none px-2 py-1.5 border border-gray-200 rounded text-[11px] font-normal text-gray-700 bg-white focus:outline-none focus:border-blue-500 shadow-2xs cursor-pointer text-center"
+                      >
+                        <option value="">Trạng thái</option>
+                        <option value="ACTIVE">Hoạt động</option>
+                        <option value="INACTIVE">Khóa</option>
+                      </select>
+                      <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-[9px]">
+                        ▼
+                      </span>
+                    </div>
                   </th>
                 </tr>
               </thead>
@@ -614,138 +595,143 @@ const handleBulkDelete = async (e: React.MouseEvent) => {
                     const isCurrentUser = user.username === currentLoginUser;
 
                     return (
-                    <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
-                      {hasPermission('DELETE_USER') && (
-                        <td className="py-2.5 px-2 text-center">
+                      <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="py-2.5 px-3 text-center">
                           <input
                             type="checkbox"
                             disabled={user.username === currentLoginUser}
                             checked={selectedUserIds.includes(user.id)}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setSelectedUserIds(prev => [...prev, user.id]);
+                                setSelectedUserIds((prev) => [...prev, user.id]);
                               } else {
-                                setSelectedUserIds(prev => prev.filter(id => id !== user.id));
+                                setSelectedUserIds((prev) => prev.filter((id) => id !== user.id));
                               }
                             }}
-                            className="w-3.5 h-3.5 border-gray-300 rounded text-blue-600 focus:ring-blue-500 cursor-pointer " 
+                            className="w-3.5 h-3.5 border-gray-300 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
                           />
                         </td>
-                      )}
-                      {hasPermission('UPDATE_USER') && (
-                        <td className="py-2.5 px-2 text-center">
-                          <div className="flex items-center justify-center gap-3">
+                        <td className="py-2.5 px-1 text-center">
+                          <div className="flex items-center justify-center gap-2">
                             <button
                               type="button"
                               onClick={() => {
                                 const actualAccountId = user.accountId ?? user.id;
                                 router.push(`/dashboard/users/edit/${actualAccountId}`);
                               }}
-                              className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors cursor-pointer"
+                              className="p-1 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer"
                               title="Chỉnh sửa người dùng"
                             >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
                               </svg>
-                            </button>        
+                            </button>
                             <button
                               type="button"
                               onClick={() => {
-                                setTargetResetId(user.id); 
-                                setTargetResetUsername(user.username); 
+                                setTargetResetId(user.id);
+                                setTargetResetUsername(user.username);
                                 setShowResetPwdModal(true);
                               }}
-                              className="p-1 text-amber-600 hover:bg-amber-50 rounded transition-colors cursor-pointer"
+                              className="p-1 text-gray-400 hover:text-amber-600 transition-colors cursor-pointer"
                               title="Khởi tạo mật khẩu"
                             >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
                               </svg>
                             </button>
                           </div>
                         </td>
-                      )}
-                      <td className="py-2.5 px-3 font-semibold text-gray-800">{user.fullName || '---'}</td>
-                      <td className="py-2.5 px-3 font-mono text-gray-600">{user.username}</td>
-                      <td className="py-2.5 px-3 text-gray-500">{user.email}</td>
-                      <td className="py-2.5 px-3 text-gray-500">{user.role || '---'}</td>
-                      <td className="py-2.5 px-3 text-gray-500">{user.position || '---'}</td>
-                      <td className="py-2.5 px-2 text-center">
-                        <div className="flex items-center justify-center">
-                          {hasPermission('UPDATE_USER') ? (
+                        <td className="py-2.5 px-3 font-semibold text-gray-800">{user.fullName || '---'}</td>
+                        <td className="py-2.5 px-3 font-mono text-gray-600">{user.username}</td>
+                        <td className="py-2.5 px-3 text-gray-500">{user.email}</td>
+                        <td className="py-2.5 px-3 text-gray-500">{user.role || '---'}</td>
+                        <td className="py-2.5 px-3 text-gray-500">{user.position || '---'}</td>
+                        <td className="py-2.5 px-3 text-center">
+                          <div className="flex items-center justify-center">
                             <button
                               type="button"
                               disabled={isCurrentUser}
                               onClick={() => handleToggleStatus(user)}
-                              className={`w-7 h-4 flex items-center rounded-full p-0.5 transition-colors duration-200 
-                                ${isCurrentUser ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
-                                ${user.isActive ? 'bg-emerald-500 justify-end' : 'bg-gray-300 justify-start'}`}
+                              className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors duration-200 ${
+                                isCurrentUser ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                              } ${user.isActive ? 'bg-[#2F6BFF] justify-end' : 'bg-gray-300 justify-start'}`}
                               title="Thay đổi trạng thái tài khoản"
                             >
-                              <span className="bg-white w-3 h-3 rounded-full shadow-md" />
+                              <span className="bg-white w-3.5 h-3.5 rounded-full shadow-sm" />
                             </button>
-                          ) : (
-                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                              user.isActive 
-                                ? 'bg-emerald-50 text-emerald-600 border-emerald-200' 
-                                : 'bg-gray-50 text-gray-400 border-gray-200'
-                            }`}>
-                              {user.isActive ? 'Hoạt động' : 'Bị khóa'}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
+                          </div>
+                        </td>
+                      </tr>
                     );
-})
+                  })
                 )}
               </tbody>
             </table>
           </div>
 
-          <div className="px-6 py-4 flex items-center justify-between border-t border-gray-100 bg-gray-50/50 text-xs text-gray-500">
-            <div className="flex items-center gap-1.5">
-              <span>Hiển thị</span>
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="px-2 py-1 border border-gray-200 rounded bg-white text-gray-700 focus:outline-none focus:border-blue-500 font-medium cursor-pointer"
-              >
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
-              </select>
-              <span>dòng mỗi trang</span>
-            </div>
+          <div className="px-6 py-3.5 flex items-center justify-between border-t border-gray-100 bg-white text-xs text-gray-500">
+            <button
+              type="button"
+              onClick={handleExportData}
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-600 font-medium transition-colors cursor-pointer"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+              </svg>
+              Export Data
+            </button>
 
-            <div className="text-gray-500 font-medium select-none">
-              Hiển thị {filteredUsers.length === 0 ? 0 : startIndex + 1} - {Math.min(startIndex + pageSize, filteredUsers.length)} của {filteredUsers.length} người dùng
-            </div>
+            <div className="flex items-center gap-4 text-xs text-gray-600 font-medium select-none">
+              <div className="relative">
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="appearance-none pl-2.5 pr-6 py-1 border border-gray-200 rounded bg-white text-gray-700 focus:outline-none focus:border-blue-500 cursor-pointer font-normal text-xs"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+                <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 text-[10px]">
+                  ▼
+                </span>
+              </div>
 
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                className="px-2.5 py-1.5 border border-gray-200 rounded-lg hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 bg-white shadow-sm font-semibold cursor-pointer"
-              >
-                ❮ Trước
-              </button>
-              <span className="font-semibold text-gray-700 select-none">
-                Trang {currentPage} / {totalPages}
+              <span>
+                {filteredUsers.length === 0
+                  ? '0 - 0 of 0'
+                  : `${startIndex + 1} - ${Math.min(startIndex + pageSize, filteredUsers.length)} of ${filteredUsers.length}`}
               </span>
-              <button
-                type="button"
-                disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                className="px-2.5 py-1.5 border border-gray-200 rounded-lg hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 bg-white shadow-sm font-semibold cursor-pointer"
-              >
-                Sau ❯
-              </button>
+
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-gray-600 cursor-pointer"
+                  title="Trang trước"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                  </svg>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={currentPage >= totalPages || filteredUsers.length === 0}
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-gray-600 cursor-pointer"
+                  title="Trang sau"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
 

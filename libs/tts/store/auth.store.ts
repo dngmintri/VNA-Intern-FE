@@ -55,6 +55,15 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "auth-storage", // Key used in localStorage
+      partialize: (state) => ({
+        accessToken: state.accessToken,
+        refreshToken: state.refreshToken,
+        fullName: state.fullName,
+        permissions: state.permissions,
+        roleCode: state.roleCode,
+        accountType: state.accountType,
+        avatar: state.avatar && !state.avatar.startsWith('data:') ? state.avatar : null,
+      }),
     }
   )
 );

@@ -122,6 +122,7 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
 
   const [selectedDkkdProvId, setSelectedDkkdProvId] = useState<string>('');
   const [selectedHdkdProvId, setSelectedHdkdProvId] = useState<string>('');
+  const [companyId, setCompanyId] = useState<string | null>(null);
 
   const [isLoadingMeta, setIsLoadingMeta] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -178,13 +179,13 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
       try {
         const [provRes, btRes, biRes] = await Promise.all([
           api.get<Province[]>('/location/provinces'),
-          api.get<BusinessType[]>('/company/business-type'),
-          api.get<BusinessIndustry[]>('/company/business-industry'),
+          api.get<{ data?: BusinessType[] } & BusinessType[]>('/business-types/all'),
+          api.get<{ data?: BusinessIndustry[] } & BusinessIndustry[]>('/business-industries/roots'),
         ]);
 
         setProvinces(provRes.data || []);
-        setBusinessTypes(btRes.data || []);
-        setBusinessIndustries(biRes.data || []);
+        setBusinessTypes(btRes.data?.data || btRes.data || []);
+        setBusinessIndustries(biRes.data?.data || biRes.data || []);
       } catch (err) {
         console.error('Lỗi tải dữ liệu danh mục:', err);
         toast.error('Không thể tải các danh mục hỗ trợ');
@@ -201,19 +202,27 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
 
     const fetchCompanyProfile = async () => {
       try {
-        const res = await api.get<{ data: CompanyProfileResponse }>(`/company/${taxCode}/company-profile`);
-        if (!res.data?.data) return;
+        let p: any = null;
+        if (taxCode.length > 20 && taxCode.includes('-')) {
+          const res = await api.get<{ data?: any } & any>(`/business/${taxCode}`);
+          p = res.data?.data || res.data;
+        } else {
+          const res = await api.get<{ data?: { items: any[] } } & any>(`/business?search=${taxCode}`);
+          const items = res.data?.data?.items || res.data?.items || [];
+          p = items.find((item: any) => item.taxCode === taxCode) || items[0];
+        }
 
-        const p = res.data.data;
+        if (!p) return;
+        setCompanyId(p.id);
 
-        const matchedDkkdProv = provinces.find((prov) => prov.name === p.provinceDKKD);
+        const matchedDkkdProv = provinces.find((prov) => prov.name === (p.registeredProvince || p.provinceDKKD));
         if (matchedDkkdProv) {
           setSelectedDkkdProvId(String(matchedDkkdProv.id));
           const wardsRes = await api.get<Ward[]>(`/location/provinces/${matchedDkkdProv.id}/wards`);
           setDkkdWards(wardsRes.data || []);
         }
 
-        const matchedHdkdProv = provinces.find((prov) => prov.name === p.provinceHDKD);
+        const matchedHdkdProv = provinces.find((prov) => prov.name === (p.operatingProvince || p.provinceHDKD));
         if (matchedHdkdProv) {
           setSelectedHdkdProvId(String(matchedHdkdProv.id));
           const wardsRes = await api.get<Ward[]>(`/location/provinces/${matchedHdkdProv.id}/wards`);
@@ -221,24 +230,24 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
         }
 
         reset({
-          business_name: p.companyName || '',
-          foreign_business_name: p.foreignCompanyName || '',
+          business_name: p.name || p.companyName || '',
+          foreign_business_name: p.foreignName || p.foreignCompanyName || '',
           tax_code: p.taxCode || '',
-          business_type: p.businessType || '',
-          business_industry: p.businessIndustry || '',
-          license_issue_date: p.licenseIssueDate ? formatToInputDate(p.licenseIssueDate) : '',
-          license_registration_province: p.provinceDKKD || '',
-          license_registration_ward: p.wardDKKD || '',
-          license_registration_adress: p.addressDKKD || '',
+          business_type: p.businessType?.name || p.businessTypeId || p.businessType || '',
+          business_industry: p.businessIndustry?.name || p.businessIndustryId || p.businessIndustry || '',
+          license_issue_date: (p.licenseDate || p.licenseIssueDate) ? formatToInputDate(p.licenseDate || p.licenseIssueDate) : '',
+          license_registration_province: p.registeredProvince || p.provinceDKKD || '',
+          license_registration_ward: p.registeredDistrict || p.wardDKKD || '',
+          license_registration_adress: p.address || p.addressDKKD || '',
           email: p.email || '',
-          business_phone: p.businessPhone || '',
-          business_operating_province: p.provinceHDKD || '',
-          business_operating_ward: p.wardHDKD || '',
-          business_operating_adress: p.addressHDKD || '',
+          business_phone: p.officePhone || p.businessPhone || '',
+          business_operating_province: p.operatingProvince || p.provinceHDKD || '',
+          business_operating_ward: p.operatingDistrict || p.wardHDKD || '',
+          business_operating_adress: p.businessLocation || p.addressHDKD || '',
           representative_name: p.representativeName || '',
           representative_phone: p.representativePhone || '',
-          business_license_file_url: p.gpkdFile || '',
-          other_document_file_url: p.gtkFile || '',
+          business_license_file_url: 'none',
+          other_document_file_url: '',
         });
       } catch (err: unknown) {
         const axiosError = err as AxiosError<{ message?: string }>;
@@ -381,76 +390,97 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
     };
 
     if (isEditMode) {
+      const targetId = companyId || taxCode;
+      const matchedBt = businessTypes.find(bt => String(bt.id) === data.business_type || bt.code === data.business_type || bt.name === data.business_type);
+      const matchedBi = businessIndustries.find(bi => String(bi.id) === data.business_industry || bi.code === data.business_industry || bi.name === data.business_industry);
+
+      const updatePayload = {
+        name: data.business_name.trim(),
+        taxCode: data.tax_code.trim(),
+        businessTypeId: matchedBt ? String(matchedBt.id) : (businessTypes[0]?.id ? String(businessTypes[0].id) : undefined),
+        businessIndustryId: matchedBi ? String(matchedBi.id) : (businessIndustries[0]?.id ? String(businessIndustries[0].id) : undefined),
+        licenseDate: data.license_issue_date ? (data.license_issue_date.includes('-') && data.license_issue_date.split('-')[0].length === 4 ? data.license_issue_date : formatToBEDate(data.license_issue_date)) : null,
+        registeredProvince: data.license_registration_province || null,
+        registeredDistrict: data.license_registration_ward || null,
+        address: data.license_registration_adress || null,
+        foreignName: data.foreign_business_name || null,
+        email: data.email.trim(),
+        officePhone: data.business_phone || null,
+        operatingProvince: data.business_operating_province || null,
+        operatingDistrict: data.business_operating_ward || null,
+        businessLocation: data.business_operating_adress || null,
+        representativeName: data.representative_name || null,
+        representativePhone: data.representative_phone || null,
+      };
+
       try {
-        const { tax_code, ...updatePayload } = payload;
-        await api.patch(`/company/${taxCode}`, updatePayload);
+        await api.patch(`/business/${targetId}`, updatePayload);
         toast.success('Cập nhật thông tin doanh nghiệp thành công!');
         handleClose();
       } catch (err: unknown) {
-        const axiosError = err as AxiosError<{ message?: string }>;
-        const msg = axiosError.response?.data?.message || 'Cập nhật thất bại. Vui lòng kiểm tra lại!';
-        toast.error(msg);
+        const axiosError = err as AxiosError<{ message?: string | string[] }>;
+        const msg = axiosError.response?.data?.message;
+        toast.error(Array.isArray(msg) ? msg[0] : (msg || 'Cập nhật thất bại. Vui lòng kiểm tra lại!'));
       } finally {
         setIsSubmitting(false);
       }
       return;
     }
 
-    try {
-      const response = await api.post<{ data: Record<string, string | null> }>('/company/preview-company', payload);
-      if (response.data?.data) {
-        setPreviewData(response.data.data);
-        setStep(2);
-      }
-    } catch (err: unknown) {
-      const axiosError = err as AxiosError<{ message?: string }>;
-      const msg = axiosError.response?.data?.message || 'Kiểm tra thông tin thất bại. Vui lòng xem lại!';
-      toast.error(msg);
-    } finally {
-      setIsSubmitting(false);
-    }
+    setPreviewData({
+      business_name: data.business_name,
+      tax_code: data.tax_code,
+      email: data.email,
+      business_type: data.business_type,
+      business_industry: data.business_industry,
+      license_registration_province: data.license_registration_province,
+      license_registration_ward: data.license_registration_ward,
+      representative_name: data.representative_name || '—',
+      business_phone: data.business_phone || '—',
+    });
+    setStep(2);
+    setIsSubmitting(false);
   };
 
   const handleConfirmCreate = async () => {
     setIsSubmitting(true);
     const data = getValues();
     
+    const matchedBt = businessTypes.find(bt => String(bt.id) === data.business_type || bt.code === data.business_type || bt.name === data.business_type);
+    const matchedBi = businessIndustries.find(bi => String(bi.id) === data.business_industry || bi.code === data.business_industry || bi.name === data.business_industry);
+
     const payload = {
-      business_name: data.business_name.trim(),
-      tax_code: data.tax_code.trim(),
-      business_type: data.business_type,
-      business_industry: data.business_industry,
-      license_issue_date: data.license_issue_date ? formatToBEDate(data.license_issue_date) : null,
-      license_registration_province: data.license_registration_province,
-      license_registration_ward: data.license_registration_ward,
-      license_registration_adress: data.license_registration_adress || null,
-      foreign_business_name: data.foreign_business_name || null,
+      name: data.business_name.trim(),
+      taxCode: data.tax_code.trim(),
+      businessTypeId: matchedBt ? String(matchedBt.id) : (businessTypes[0]?.id ? String(businessTypes[0].id) : data.business_type),
+      businessIndustryId: matchedBi ? String(matchedBi.id) : (businessIndustries[0]?.id ? String(businessIndustries[0].id) : data.business_industry),
+      licenseDate: data.license_issue_date ? (data.license_issue_date.includes('-') && data.license_issue_date.split('-')[0].length === 4 ? data.license_issue_date : formatToBEDate(data.license_issue_date)) : null,
+      registeredProvince: data.license_registration_province || null,
+      registeredDistrict: data.license_registration_ward || null,
+      address: data.license_registration_adress || null,
+      foreignName: data.foreign_business_name || null,
       email: data.email.trim(),
-      business_phone: data.business_phone || null,
-      business_operating_province: data.business_operating_province || null,
-      business_operating_ward: data.business_operating_ward || null,
-      business_operating_adress: data.business_operating_adress || null,
-      representative_name: data.representative_name || null,
-      representative_phone: data.representative_phone || null,
-      business_license_file_url: data.business_license_file_url || null,
-      other_document_file_url: data.other_document_file_url || null,
+      officePhone: data.business_phone || null,
+      operatingProvince: data.business_operating_province || null,
+      operatingDistrict: data.business_operating_ward || null,
+      businessLocation: data.business_operating_adress || null,
+      representativeName: data.representative_name || null,
+      representativePhone: data.representative_phone || null,
+      isActive: true,
     };
 
     try {
-      const res = await api.post<{ data: { username: string; password?: string } }>('/company/create-company', payload);
-      if (res.data?.data) {
-        toast.success('Tạo doanh nghiệp thành công!');
-        const credentials = res.data.data;
-        if (onSuccess) {
-          onSuccess(credentials);
-        } else {
-          router.push(`/dashboard/companies?createdUser=${credentials.username}&createdPassword=${credentials.password || ''}`);
-        }
+      await api.post('/business', payload);
+      toast.success('Tạo doanh nghiệp thành công!');
+      if (onSuccess) {
+        onSuccess({ username: data.tax_code.trim() });
+      } else {
+        router.push('/dashboard/companies');
       }
     } catch (err: unknown) {
-      const axiosError = err as AxiosError<{ message?: string }>;
-      const msg = axiosError.response?.data?.message || 'Tạo doanh nghiệp thất bại';
-      toast.error(msg);
+      const axiosError = err as AxiosError<{ message?: string | string[] }>;
+      const msg = axiosError.response?.data?.message;
+      toast.error(Array.isArray(msg) ? msg[0] : (msg || 'Tạo doanh nghiệp thất bại'));
     } finally {
       setIsSubmitting(false);
     }
