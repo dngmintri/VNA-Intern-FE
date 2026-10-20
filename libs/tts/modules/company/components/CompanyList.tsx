@@ -656,24 +656,20 @@ export const CompanyList = () => {
 
   return (
     <div className="flex-1 flex flex-col bg-[#F4F6F9] min-h-screen font-sans">
-      <div className="bg-white px-6 py-3 flex items-center justify-between border-b border-gray-200 shadow-sm flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-gray-400">Hệ thống</span>
-          <span className="text-xs text-gray-400">❯</span>
-          <h1 className="text-sm font-bold text-gray-800">Danh sách doanh nghiệp</h1>
-        </div>
+      <div className="bg-white px-6 py-3.5 flex items-center justify-between border-b border-gray-200 flex-shrink-0">
+        <h1 className="text-sm font-bold text-gray-800">Danh sách doanh nghiệp</h1>
         
         <div className="flex items-center gap-2.5">
           {hasPermission('CREATE_COMPANY') && (
             <button
               type="button"
               onClick={() => setShowImportModal(true)}
-              className="px-4 py-1.5 border border-emerald-600 hover:bg-emerald-50 text-emerald-600 rounded-lg text-xs font-semibold shadow-sm transition-colors flex items-center gap-1.5 bg-white cursor-pointer"
+              className="px-3.5 py-1.5 border border-blue-600 hover:bg-blue-50 text-blue-600 rounded-lg text-xs font-semibold shadow-sm transition-colors flex items-center gap-1.5 bg-white cursor-pointer"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
               </svg>
-              Nhập từ Excel
+              Thêm từ file
             </button>
           )}
           {hasPermission('CREATE_COMPANY') && (
@@ -682,24 +678,12 @@ export const CompanyList = () => {
               onClick={() => {
                 router.push('/dashboard/companies/create');
               }}
-              className="px-4 py-1.5 bg-[#2F6BFF] hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-1.5 bg-[#2F6BFF] hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
               Thêm mới
-            </button>
-          )}
-          {hasPermission('DELETE_COMPANY') && (
-            <button
-              type="button"
-              onClick={() => router.push('/dashboard/companies/deleted')}
-              className="px-4 py-1.5 border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-semibold shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer"
-            >
-              <svg className="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-              Doanh nghiệp đã xóa
             </button>
           )}
         </div>
@@ -710,9 +694,9 @@ export const CompanyList = () => {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left text-xs">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-100 text-gray-500 font-bold uppercase tracking-normal text-[10px]">
+                <tr className="bg-gray-50/75 border-b border-gray-200 text-gray-600 font-semibold text-xs">
                   {hasPermission('DELETE_COMPANY') && (
-                    <th className="py-3 px-2 text-center w-10">
+                    <th className="py-3 px-3 text-center w-10">
                       <div className="flex items-center justify-center">
                         <input
                           type="checkbox"
@@ -724,21 +708,21 @@ export const CompanyList = () => {
                               setSelectedTaxCodes([]);
                             }
                           }}
-                          className="w-3.5 h-3.5 border-gray-300 rounded text-blue-600 focus:ring-blue-500 cursor-pointer align-middle"
+                          className="w-4 h-4 border-gray-300 rounded text-blue-600 focus:ring-blue-500 cursor-pointer align-middle"
                         />
                       </div>
                     </th>
                   )}
-                  <th className="py-3 px-2 w-24 text-center">Thao tác</th>
-                  <th className="py-3 px-3 w-28">Mã số thuế</th>
-                  <th className="py-3 px-3 w-64">Tên doanh nghiệp</th>
-                  <th className="py-3 px-3 w-36">Phường/Xã</th>
-                  <th className="py-3 px-3 min-w-[140px]">Loại hình</th>
-                  <th className="py-3 px-3 min-w-[160px]">Ngành nghề</th>
-                  <th className="py-3 px-2 w-24 text-center">Trạng thái</th>
+                  <th className="py-3 px-2 w-28 text-center font-medium">Thao tác</th>
+                  <th className="py-3 px-3 min-w-[200px] font-medium">Tên doanh nghiệp</th>
+                  <th className="py-3 px-3 min-w-[120px] font-medium">Mã số thuế</th>
+                  <th className="py-3 px-3 min-w-[160px] font-medium">Loại hình kinh doanh</th>
+                  <th className="py-3 px-3 min-w-[180px] font-medium">Ngành nghề kinh doanh</th>
+                  <th className="py-3 px-3 min-w-[140px] font-medium">Phường/ xã</th>
+                  <th className="py-3 px-2 w-24 text-center font-medium">Trạng thái</th>
                 </tr>
-                <tr className="bg-gray-50/50 border-b border-gray-100">
-                  {hasPermission('DELETE_COMPANY') && <th className="py-2 px-2"></th>}
+                <tr className="bg-white border-b border-gray-100">
+                  {hasPermission('DELETE_COMPANY') && <th className="py-2 px-3"></th>}
                   
                   <th className="py-2 px-2 text-center">
                     <button
@@ -752,52 +736,43 @@ export const CompanyList = () => {
                         setSelectedStatus('');
                         toast.success('Đã xóa tất cả bộ lọc');
                       }}
-                      className="p-1 text-gray-400 hover:text-blue-500 rounded hover:bg-gray-200/50 transition-colors cursor-pointer"
+                      className="p-1 text-gray-400 hover:text-blue-500 rounded hover:bg-gray-100 transition-colors cursor-pointer"
                       title="Xóa tất cả bộ lọc"
                     >
-                      <svg className="w-4 h-4 mx-auto" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <svg className="w-3.5 h-3.5 mx-auto" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
                       </svg>
                     </button>
                   </th>
                   
-                  <th className="py-2 px-3">
-                    <input
-                      type="text"
-                      value={searchTaxCode}
-                      onChange={(e) => setSearchTaxCode(e.target.value)}
-                      placeholder="Tìm MST..."
-                      className="w-full px-2 py-1 border border-gray-200 rounded text-[11px] font-normal text-gray-800 placeholder-gray-450 bg-white focus:outline-none focus:border-blue-500"
-                    />
-                  </th>
-                  
-                  <th className="py-2 px-3">
+                  {/* Tên doanh nghiệp filter */}
+                  <th className="py-2 px-3 font-normal">
                     <input
                       type="text"
                       value={searchName}
                       onChange={(e) => setSearchName(e.target.value)}
-                      placeholder="Tìm tên DN..."
-                      className="w-full px-2 py-1 border border-gray-200 rounded text-[11px] font-normal text-gray-800 placeholder-gray-450 bg-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs font-normal text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:border-blue-500"
                     />
                   </th>
-                  
-                  <th className="py-2 px-3 text-left">
-                    <SearchableSelect
-                      options={uniqueWards.map((w) => ({ value: String(w.id), label: w.name }))}
-                      value={selectedWardId}
-                      onChange={(val) => setSelectedWardId(val)}
-                      placeholder="Phường/Xã"
-                      size="sm"
+
+                  {/* Mã số thuế filter */}
+                  <th className="py-2 px-3 font-normal">
+                    <input
+                      type="text"
+                      value={searchTaxCode}
+                      onChange={(e) => setSearchTaxCode(e.target.value)}
+                      className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs font-normal text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:border-blue-500"
                     />
                   </th>
-                  
-                  <th className="py-2 px-3">
+
+                  {/* Loại hình kinh doanh filter */}
+                  <th className="py-2 px-3 font-normal">
                     <select
                       value={selectedBusinessType}
                       onChange={(e) => setSelectedBusinessType(e.target.value)}
-                      className="w-full px-1.5 py-1 border border-gray-200 rounded text-[11px] font-normal text-gray-700 bg-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs font-normal text-gray-600 bg-white focus:outline-none focus:border-blue-500"
                     >
-                      <option value="">Loại hình</option>
+                      <option value="">Loại hình kinh doanh</option>
                       {businessTypes.map((bt) => (
                         <option key={bt.id} value={bt.name}>
                           {bt.name}
@@ -805,26 +780,38 @@ export const CompanyList = () => {
                       ))}
                     </select>
                   </th>
-                  
-                  <th className="py-2 px-3 text-left">
+
+                  {/* Ngành nghề kinh doanh filter */}
+                  <th className="py-2 px-3 font-normal text-left">
                     <SearchableSelect
                       options={businessIndustries.map((bi) => ({ value: bi.name, label: bi.code ? `${bi.code} - ${bi.name}` : bi.name }))}
                       value={selectedBusinessIndustry}
                       onChange={(val) => setSelectedBusinessIndustry(val)}
-                      placeholder="Ngành nghề"
+                      placeholder="Ngành nghề kinh doanh"
                       size="sm"
                     />
                   </th>
-                  
-                  <th className="py-2 px-2">
+
+                  {/* Phường/ xã filter */}
+                  <th className="py-2 px-3 font-normal text-left">
+                    <SearchableSelect
+                      options={uniqueWards.map((w) => ({ value: String(w.id), label: w.name }))}
+                      value={selectedWardId}
+                      onChange={(val) => setSelectedWardId(val)}
+                      placeholder="Phường/ xã"
+                      size="sm"
+                    />
+                  </th>
+
+                  {/* Trạng thái filter */}
+                  <th className="py-2 px-2 font-normal">
                     <select
                       value={selectedStatus}
                       onChange={(e) => setSelectedStatus(e.target.value)}
-                      className="w-full px-1 py-1 border border-gray-200 rounded text-[11px] font-normal text-gray-700 bg-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-1.5 py-1.5 border border-gray-200 rounded text-xs font-normal text-gray-600 bg-white focus:outline-none focus:border-blue-500"
                     >
                       <option value="">Trạng thái</option>
                       <option value="ACTIVE">Hoạt động</option>
-                      <option value="PENDING">Chờ duyệt</option>
                       <option value="INACTIVE">Khóa</option>
                     </select>
                   </th>
@@ -838,10 +825,10 @@ export const CompanyList = () => {
                     </td>
                   </tr>
                 ) : (
-                  paginatedCompanies.map((company, index) => (
+                  paginatedCompanies.map((company) => (
                     <tr key={company.id} className="hover:bg-gray-50/50 transition-colors">
                       {hasPermission('DELETE_COMPANY') && (
-                        <td className="py-2.5 px-2 text-center">
+                        <td className="py-3 px-3 text-center">
                           <div className="flex items-center justify-center">
                             <input
                               type="checkbox"
@@ -853,13 +840,13 @@ export const CompanyList = () => {
                                   setSelectedTaxCodes(prev => prev.filter(c => c !== company.taxCode));
                                 }
                               }}
-                              className="w-3.5 h-3.5 border-gray-300 rounded text-blue-600 focus:ring-blue-500 cursor-pointer align-middle"
+                              className="w-4 h-4 border-gray-300 rounded text-blue-600 focus:ring-blue-500 cursor-pointer align-middle"
                             />
                           </div>
                         </td>
                       )}
-                      <td className="py-2.5 px-2 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
+                      <td className="py-3 px-2 text-center">
+                        <div className="flex items-center justify-center gap-2.5">
                           {hasPermission('VIEW_COMPANY') && (
                             <button
                               type="button"
@@ -867,10 +854,10 @@ export const CompanyList = () => {
                                 e.stopPropagation();
                                 handleViewDetails(company.taxCode);
                               }}
-                              className="p-1 text-gray-500 hover:bg-gray-100 rounded transition-colors cursor-pointer"
+                              className="text-gray-400 hover:text-blue-600 transition-colors cursor-pointer"
                               title="Xem chi tiết doanh nghiệp"
                             >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
                                 <circle cx="12" cy="12" r="3" />
                               </svg>
@@ -884,10 +871,10 @@ export const CompanyList = () => {
                                 e.stopPropagation();
                                 router.push(`/dashboard/companies/edit/${company.taxCode}`);
                               }}
-                              className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors cursor-pointer"
+                              className="text-gray-400 hover:text-blue-600 transition-colors cursor-pointer"
                               title="Chỉnh sửa doanh nghiệp"
                             >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
                               </svg>
                             </button>
@@ -900,44 +887,32 @@ export const CompanyList = () => {
                                 e.stopPropagation();
                                 handleOpenResetModal(company.taxCode, company.companyName);
                               }}
-                              className="p-1 text-amber-600 hover:bg-amber-50 rounded transition-colors cursor-pointer"
+                              className="text-gray-400 hover:text-blue-600 transition-colors cursor-pointer"
                               title="Khởi tạo lại mật khẩu"
                             >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
                               </svg>
                             </button>
                           )}
                         </div>
                       </td>
-                      <td className="py-2.5 px-3 font-semibold text-gray-800">{company.taxCode}</td>
-                      <td className="py-2.5 px-3 font-medium text-gray-900 leading-relaxed">
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span>{company.companyName}</span>
-                            {!company.gpkdFilePath && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                                Chưa có GPKD
-                              </span>
-                            )}
-                          </div>
-                          {company.foreignCompanyName && (
-                            <div className="text-[10px] text-gray-400 font-normal mt-0.5">
-                              {company.foreignCompanyName}
-                            </div>
-                          )}
-                        </div>
+                      <td className="py-3 px-3 font-medium text-gray-800 text-xs">
+                        {company.companyName || '—'}
                       </td>
-                      <td className="py-2.5 px-3 text-gray-600 truncate max-w-[140px]" title={wardMap[company.wardDkkdId]}>
-                        {wardMap[company.wardDkkdId] || '—'}
+                      <td className="py-3 px-3 text-gray-700 text-xs">
+                        {company.taxCode}
                       </td>
-                      <td className="py-2.5 px-3 text-gray-500 truncate max-w-[150px]" title={company.businessType?.name}>
+                      <td className="py-3 px-3 text-gray-700 text-xs truncate max-w-[200px]" title={company.businessType?.name}>
                         {company.businessType?.name || '—'}
                       </td>
-                      <td className="py-2.5 px-3 text-gray-500 truncate max-w-[170px]" title={company.businessIndustry?.name}>
+                      <td className="py-3 px-3 text-gray-700 text-xs truncate max-w-[220px]" title={company.businessIndustry?.name}>
                         {company.businessIndustry?.name || '—'}
                       </td>
-                      <td className="py-2.5 px-2 text-center">
+                      <td className="py-3 px-3 text-gray-700 text-xs truncate max-w-[160px]" title={wardMap[company.wardDkkdId]}>
+                        {wardMap[company.wardDkkdId] || '—'}
+                      </td>
+                      <td className="py-3 px-2 text-center">
                         <div className="flex items-center justify-center">
                           {hasPermission('BAN_COMPANY') ? (
                             <button
@@ -946,22 +921,20 @@ export const CompanyList = () => {
                                 e.stopPropagation();
                                 handleToggleStatus(company.taxCode, company.status);
                               }}
-                              className={`w-7 h-4 flex items-center rounded-full p-0.5 transition-colors duration-200 cursor-pointer ${
-                                company.status === 'ACTIVE' ? 'bg-emerald-500 justify-end' : 'bg-gray-300 justify-start'
+                              className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors duration-200 cursor-pointer ${
+                                company.status === 'ACTIVE' ? 'bg-[#2F6BFF] justify-end' : 'bg-gray-300 justify-start'
                               }`}
                               title="Bật/Tắt trạng thái hoạt động"
                             >
-                              <span className="bg-white w-3 h-3 rounded-full shadow-md" />
+                              <span className="bg-white w-4 h-4 rounded-full shadow-sm" />
                             </button>
                           ) : (
-                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-medium border ${
                               company.status === 'ACTIVE'
-                                ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
-                                : company.status === 'PENDING'
-                                ? 'bg-amber-50 text-amber-600 border-amber-200'
+                                ? 'bg-blue-50 text-blue-600 border-blue-200'
                                 : 'bg-gray-50 text-gray-400 border-gray-200'
                             }`}>
-                              {company.status === 'ACTIVE' ? 'Hoạt động' : company.status === 'PENDING' ? 'Chờ duyệt' : 'Bị khóa'}
+                              {company.status === 'ACTIVE' ? 'Hoạt động' : 'Bị khóa'}
                             </span>
                           )}
                         </div>
@@ -973,27 +946,27 @@ export const CompanyList = () => {
             </table>
           </div>
 
-          <div className="px-6 py-4 flex items-center justify-between border-t border-gray-100 bg-gray-50/50 text-xs text-gray-500">
+          <div className="px-6 py-3.5 flex items-center justify-end gap-6 text-xs text-gray-600 bg-white border-t border-gray-100">
             <div className="flex items-center gap-1.5">
-              <span>Hiển thị</span>
               <select
                 value={pageSize}
                 onChange={(e) => {
                   setPageSize(Number(e.target.value));
                   setCurrentPage(1);
                 }}
-                className="px-2 py-1 border border-gray-200 rounded bg-white text-gray-700 focus:outline-none focus:border-blue-500 font-medium"
+                className="bg-transparent text-gray-600 text-xs font-normal focus:outline-none cursor-pointer pr-1"
               >
                 <option value={5}>5</option>
                 <option value={10}>10</option>
                 <option value={20}>20</option>
                 <option value={50}>50</option>
               </select>
-              <span>dòng mỗi trang</span>
             </div>
 
-            <div className="text-gray-500 font-medium">
-              Hiển thị {filteredCompanies.length === 0 ? 0 : startIndex + 1} - {Math.min(startIndex + pageSize, filteredCompanies.length)} của {filteredCompanies.length} doanh nghiệp
+            <div className="text-gray-600 text-xs">
+              {filteredCompanies.length === 0
+                ? '0 - 0 of 0'
+                : `${startIndex + 1} - ${Math.min(startIndex + pageSize, filteredCompanies.length)} of ${filteredCompanies.length}`}
             </div>
 
             <div className="flex items-center gap-3">
@@ -1001,22 +974,24 @@ export const CompanyList = () => {
                 type="button"
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                className="px-2.5 py-1.5 border border-gray-200 rounded-lg hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 bg-white shadow-sm font-semibold cursor-pointer"
+                className="text-gray-400 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer p-1 transition-colors"
+                title="Trang trước"
               >
-                ❮ Trước
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                </svg>
               </button>
               
-              <span className="font-semibold text-gray-750">
-                Trang {currentPage} / {totalPages}
-              </span>
-
               <button
                 type="button"
-                disabled={currentPage === totalPages}
+                disabled={currentPage === totalPages || totalPages === 0}
                 onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                className="px-2.5 py-1.5 border border-gray-200 rounded-lg hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 bg-white shadow-sm font-semibold cursor-pointer"
+                className="text-gray-400 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer p-1 transition-colors"
+                title="Trang sau"
               >
-                Sau ❯
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
               </button>
             </div>
           </div>
@@ -1387,89 +1362,29 @@ export const CompanyList = () => {
 
 
       {showAccountModal && generatedAccount && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
-          <div className="bg-white rounded-2xl w-full max-w-[400px] shadow-2xl overflow-hidden animate-fadeIn text-gray-700">
-            <div className="bg-[#2F6BFF] text-white text-center py-4 font-bold text-sm uppercase tracking-wider">
-              Tài khoản doanh nghiệp mới
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100] p-4 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-xl w-full max-w-[420px] shadow-2xl overflow-hidden animate-scaleUp">
+            <div className="bg-[#2F6BFF] text-white py-3.5 px-6 font-bold text-center text-sm md:text-base tracking-wide select-none">
+              Thông tin tài khoản
             </div>
-
-            <div className="p-6 space-y-5 text-center">
-              <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center mx-auto border border-emerald-100 mb-2">
-                <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                </svg>
-              </div>
-
-              <div className="space-y-1">
-                <h3 className="text-sm font-bold text-gray-900">Tạo doanh nghiệp thành công!</h3>
-                <p className="text-[11px] text-gray-400 leading-normal">
-                  Vui lòng lưu lại thông tin tài khoản đăng nhập dưới đây để bàn giao cho doanh nghiệp.
-                </p>
-              </div>
-
-              <div className="space-y-4 text-left">
-                <div>
-                  <span className="text-[10.5px] font-semibold text-gray-400 block mb-1">Tên đăng nhập (Mã số thuế)</span>
-                  <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden focus-within:border-blue-500 transition-colors">
-                    <input 
-                      type="text" 
-                      readOnly 
-                      value={generatedAccount.username} 
-                      className="w-full px-3 py-2 text-xs font-bold text-gray-800 bg-transparent focus:outline-none select-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard.writeText(generatedAccount.username);
-                        toast.success('Đã sao chép tên đăng nhập!');
-                      }}
-                      className="px-3 py-2 text-blue-600 hover:bg-gray-200/50 border-l border-gray-200 cursor-pointer flex items-center justify-center transition-colors"
-                      title="Sao chép tên đăng nhập"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                      </svg>
-                    </button>
-                  </div>
+            <div className="p-6 space-y-4 text-xs md:text-sm text-gray-800">
+              <div className="space-y-3 font-normal text-sm leading-relaxed">
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-900 font-bold">•</span>
+                  <span>Tài khoản: <strong className="font-bold text-gray-950">{generatedAccount.username}</strong></span>
                 </div>
-
-                <div>
-                  <span className="text-[10.5px] font-semibold text-gray-400 block mb-1">Mật khẩu mặc định</span>
-                  <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden focus-within:border-blue-500 transition-colors">
-                    <input 
-                      type="text" 
-                      readOnly 
-                      value={generatedAccount.password || '12345678'} 
-                      className="w-full px-3 py-2 text-xs font-bold text-gray-800 bg-transparent focus:outline-none select-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (generatedAccount.password) {
-                          navigator.clipboard.writeText(generatedAccount.password);
-                          toast.success('Đã sao chép mật khẩu!');
-                        }
-                      }}
-                      className="px-3 py-2 text-blue-600 hover:bg-gray-200/50 border-l border-gray-200 cursor-pointer flex items-center justify-center transition-colors"
-                      title="Sao chép mật khẩu"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                      </svg>
-                    </button>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-900 font-bold">•</span>
+                  <span>Mật khẩu: <strong className="font-bold text-gray-950">{generatedAccount.password || '12345678'}</strong></span>
                 </div>
               </div>
-
-              <div className="pt-2">
+              <div className="flex items-center justify-end pt-3">
                 <button
                   type="button"
                   onClick={() => setShowAccountModal(false)}
-                  className="w-full py-2.5 bg-[#2F6BFF] hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-sm transition-colors cursor-pointer"
+                  className="text-[#2F6BFF] hover:underline font-semibold text-xs md:text-sm transition-colors cursor-pointer"
                 >
-                  Hoàn tất
+                  Huỷ bỏ
                 </button>
               </div>
             </div>
@@ -1766,12 +1681,12 @@ export const CompanyList = () => {
       />
 
       {selectedTaxCodes.length > 0 && hasPermission('DELETE_COMPANY') && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-gray-150 flex items-center h-12 overflow-hidden z-50 animate-fade-in pr-4">
-          <div className="bg-[#2F6BFF] text-white w-12 h-full flex items-center justify-center font-bold text-sm">
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 bg-white rounded-lg shadow-lg border border-gray-200 flex items-center h-8 overflow-hidden z-50 animate-fade-in text-xs">
+          <div className="bg-[#2F6BFF] text-white px-2.5 h-full flex items-center justify-center font-bold text-xs">
             {selectedTaxCodes.length}
           </div>
           
-          <div className="px-4 text-gray-800 font-medium text-xs whitespace-nowrap">
+          <div className="px-3 text-gray-700 font-medium whitespace-nowrap text-xs">
             dữ liệu được chọn
           </div>
           
@@ -1779,20 +1694,18 @@ export const CompanyList = () => {
             type="button"
             disabled={isBatchDeleting}
             onClick={() => setShowBatchDeleteModal(true)}
-            className="bg-[#FF3B30] hover:bg-[#E03026] disabled:opacity-50 text-white rounded-lg h-8 px-3.5 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer mr-3 shadow-sm"
+            className="bg-[#E53935] hover:bg-[#D32F2F] disabled:opacity-50 text-white rounded h-6 px-2.5 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer mr-2 shadow-sm"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
-            Xóa
+            Xoá
           </button>
-
-          <div className="w-px h-6 bg-gray-200 mr-3" />
 
           <button
             type="button"
             onClick={() => setSelectedTaxCodes([])}
-            className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded hover:bg-gray-100 cursor-pointer flex items-center justify-center"
+            className="text-gray-400 hover:text-gray-600 transition-colors px-2 h-full cursor-pointer flex items-center justify-center border-l border-gray-100 hover:bg-gray-50"
             title="Bỏ chọn"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">

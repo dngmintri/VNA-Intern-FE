@@ -77,31 +77,7 @@ export const ForgotPasswordForm = () => {
       toast.error('Vui lòng nhập mật khẩu mới');
       return;
     }
-    if (newPassword.length < 6) {
-      toast.error('Mật khẩu mới phải có ít nhất 6 ký tự');
-      return;
-    }
 
-
-    if (!/[A-Z]/.test(newPassword)) {
-      toast.error('Mật khẩu mới phải chứa ít nhất 1 chữ cái viết hoa (A-Z)');
-      return;
-    }
-
-    if (!/[a-z]/.test(newPassword)) {
-      toast.error('Mật khẩu mới phải chứa ít nhất 1 chữ cái viết thường (a-z)');
-      return;
-    }
-
-    if (!/[0-9]/.test(newPassword)) {
-      toast.error('Mật khẩu mới phải chứa ít nhất 1 chữ số (0-9)');
-      return;
-    }
-
-    if (!/[!@#$%^&*(),.?":{}|<>_]/.test(newPassword)) {
-      toast.error('Mật khẩu mới phải chứa ít nhất 1 ký tự đặc biệt (ví dụ: @, #, $, !, %, v.v.)');
-      return;
-    }
 
     if (!confirmPassword.trim()) {
       toast.error('Vui lòng xác nhận mật khẩu mới');
