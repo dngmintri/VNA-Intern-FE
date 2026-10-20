@@ -157,33 +157,8 @@ export const Sidebar = () => {
       return;
     }
 
-    if (newPassword.length < 6) {
-      toast.error('Mật khẩu mới phải có ít nhất 6 ký tự để đảm bảo an toàn');
-      return;
-    }
-
     if (oldPassword === newPassword) {
       toast.error('Mật khẩu mới không được trùng với mật khẩu cũ hiện tại');
-      return;
-    }
-
-    if (!/[A-Z]/.test(newPassword)) {
-      toast.error('Mật khẩu mới phải chứa ít nhất 1 chữ cái viết hoa (A-Z)');
-      return;
-    }
-
-    if (!/[a-z]/.test(newPassword)) {
-      toast.error('Mật khẩu mới phải chứa ít nhất 1 chữ cái viết thường (a-z)');
-      return;
-    }
-
-    if (!/[0-9]/.test(newPassword)) {
-      toast.error('Mật khẩu mới phải chứa ít nhất 1 chữ số (0-9)');
-      return;
-    }
-
-    if (!/[!@#$%^&*(),.?":{}|<>_]/.test(newPassword)) {
-      toast.error('Mật khẩu mới phải chứa ít nhất 1 ký tự đặc biệt (ví dụ: @, #, $, !, %, v.v.)');
       return;
     }
 

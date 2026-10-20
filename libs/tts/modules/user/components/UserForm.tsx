@@ -126,8 +126,19 @@ export const UserForm: React.FC<UserFormProps> = ({
             setEmail(userData.email || '');
             setPosition(userData.position || '');
             setGender(userData.gender === 'female' ? 'female' : 'male');
-            if (userData.role === 'ADMIN' || userData.role === 'DOANH_NGHIEP') {
-              setRole(userData.role);
+            const rawRole =
+              (typeof userData.role === 'object' && userData.role !== null
+                ? userData.role.name
+                : userData.role) ||
+              userData.roleCode ||
+              '';
+            if (rawRole) {
+              const upper = String(rawRole).toUpperCase();
+              if (upper.includes('DOANH_NGHIEP') || upper.includes('ENTERPRISE') || upper.includes('DOANH NGHIỆP')) {
+                setRole('DOANH_NGHIEP');
+              } else {
+                setRole('ADMIN');
+              }
             }
             if (userData.isActive !== undefined) {
               setIsActive(userData.isActive);
@@ -320,25 +331,72 @@ export const UserForm: React.FC<UserFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!fullName.trim()) {
+    const cleanFullName = fullName.trim();
+    if (!cleanFullName) {
       toast.error('Vui lòng nhập họ và tên');
+      return;
+    }
+    if (cleanFullName.length < 2 || cleanFullName.length > 100) {
+      toast.error('Họ và tên phải có độ dài từ 2 đến 100 ký tự');
       return;
     }
 
     if (isModeCreate) {
-      if (!username.trim()) {
-        toast.error('Vui lòng nhập tên tài khoản (username)');
+      const cleanUsername = username.trim();
+      if (!cleanUsername) {
+        toast.error('Vui lòng nhập tên đăng nhập');
         return;
       }
-      // Không ràng buộc điều kiện mật khẩu phức tạp
+      if (cleanUsername.length < 4 || cleanUsername.length > 30) {
+        toast.error('Tên đăng nhập phải có độ dài từ 4 đến 30 ký tự');
+        return;
+      }
+      if (!/^[a-zA-Z0-9_]+$/.test(cleanUsername)) {
+        toast.error('Tên đăng nhập chỉ được chứa chữ cái không dấu, số và dấu gạch dưới (_), không chứa khoảng trắng');
+        return;
+      }
+
+      // Mật khẩu không ràng buộc phức tạp, chỉ kiểm tra không để trống
       if (!password.trim()) {
         toast.error('Vui lòng nhập mật khẩu');
         return;
       }
-      if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        toast.error('Vui lòng nhập email hợp lệ');
+
+      const cleanEmail = email.trim().toLowerCase();
+      if (!cleanEmail) {
+        toast.error('Vui lòng nhập email');
         return;
       }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(cleanEmail)) {
+        toast.error('Email không đúng định dạng (ví dụ: user@example.com)');
+        return;
+      }
+      if (cleanEmail.length > 255) {
+        toast.error('Email không được vượt quá 255 ký tự');
+        return;
+      }
+    }
+
+    // Ngày tháng năm sinh: chỉ cần không lớn hơn ngày hiện tại (<= today)
+    if (dateOfBirth) {
+      const inputDob = new Date(dateOfBirth);
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      if (inputDob > today) {
+        toast.error('Ngày tháng năm sinh không được lớn hơn ngày hiện tại');
+        return;
+      }
+    }
+
+    if (position && position.trim().length > 100) {
+      toast.error('Chức danh không được vượt quá 100 ký tự');
+      return;
+    }
+
+    if (streetAddress && streetAddress.trim().length > 255) {
+      toast.error('Địa chỉ không được vượt quá 255 ký tự');
+      return;
     }
 
     const selectedProv = provinces.find((p) => String(p.id) === String(selectedProvinceId));
@@ -460,8 +518,10 @@ export const UserForm: React.FC<UserFormProps> = ({
             disabled={isLoading}
             className="px-4 py-1.5 bg-[#2F6BFF] hover:bg-blue-700 disabled:opacity-50 text-white rounded-md text-xs font-semibold shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
           >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V7l-4-4z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 21v-8H7v8" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7 3v5h8" />
             </svg>
             {isLoading ? 'Đang lưu...' : 'Lưu'}
           </button>
@@ -644,6 +704,7 @@ export const UserForm: React.FC<UserFormProps> = ({
                   </label>
                   <input
                     type="date"
+                    max={new Date().toLocaleDateString('en-CA')}
                     value={dateOfBirth}
                     onChange={(e) => setDateOfBirth(e.target.value)}
                     className="w-full h-10 px-3 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white cursor-pointer transition-colors"
@@ -803,7 +864,7 @@ export const UserForm: React.FC<UserFormProps> = ({
                   />
                 </div>
 
-                <div className="md:col-span-2 relative mt-2">
+                <div className="relative mt-2">
                   <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10 select-none">
                     Địa chỉ
                   </label>
@@ -811,7 +872,7 @@ export const UserForm: React.FC<UserFormProps> = ({
                     type="text"
                     value={streetAddress}
                     onChange={(e) => setStreetAddress(e.target.value)}
-                    placeholder="Nhập địa chỉ chi tiết"
+                    placeholder="Địa chỉ"
                     className="w-full h-10 px-3 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white transition-colors"
                   />
                 </div>

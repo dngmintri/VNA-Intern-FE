@@ -24,6 +24,7 @@ export const profileSchema = z.object({
   }),
   gender: z.string().optional(),
   position: z.string().optional(),
+  role: z.string().optional(),
   roleId: z.union([z.number(), z.string(), z.null()]).optional(),
   email: z.string().email('Email không đúng định dạng').min(1, 'Email là bắt buộc'),
   provinceId: z.string().optional(),

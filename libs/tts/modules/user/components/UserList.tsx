@@ -210,24 +210,8 @@ const handlePreviewExcel = async (e: React.MouseEvent) => {
     }
   };
   const validatePassword = (password: string): boolean => {
-    if (password.length < 8) {
-      setPwdError('Mật khẩu phải chứa ít nhất 8 ký tự');
-      return false;
-    }
-    if (!/[A-Z]/.test(password)) {
-      setPwdError('Mật khẩu phải chứa ít nhất 1 chữ cái viết hoa');
-      return false;
-    }
-    if (!/[a-z]/.test(password)) {
-      setPwdError('Mật khẩu phải chứa ít nhất 1 chữ cái viết thường');
-      return false;
-    }
-    if (!/[0-9]/.test(password)) {
-      setPwdError('Mật khẩu phải chứa ít nhất 1 chữ số');
-      return false;
-    }
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-      setPwdError('Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt');
+    if (!password || !password.trim()) {
+      setPwdError('Vui lòng nhập mật khẩu mới');
       return false;
     }
     setPwdError('');
@@ -240,11 +224,11 @@ const handlePreviewExcel = async (e: React.MouseEvent) => {
 
     try {
       const payload = {
-        newPassword: newPassword          
+        newPassword: newPassword.trim()          
       };
 
       const currentUser = users.find(u => u.id === targetResetId);
-      const actualAccountId = currentUser?.accountId;
+      const actualAccountId = currentUser?.accountId || currentUser?.id || targetResetId;
 
       if (!actualAccountId) {
         toast.error('Không tìm thấy tài khoản');
@@ -269,7 +253,7 @@ const handlePreviewExcel = async (e: React.MouseEvent) => {
         return;
       }
 
-      toast.success('Đặt lại mật khẩu thành công', {
+      toast.success('Khởi tạo mật khẩu thành công', {
         style: {
           background: '#E2F6E9',
           color: '#2E7D32',
@@ -771,10 +755,10 @@ const handleBulkDelete = async (e: React.MouseEvent) => {
                   value={newPassword}
                   onChange={(e) => {
                     setNewPassword(e.target.value);
-                    if (e.target.value) validatePassword(e.target.value);
+                    if (pwdError) setPwdError('');
                   }}
                   placeholder="Nhập mật khẩu mới mong muốn"
-                  className="w-full px-3 py-2 pr-10 border border-gray-200 rounded-md focus:outline-none focus:border-blue-500 text-gray-800 placeholder-gray-300 text-xs shadow-inner"
+                  className="w-full px-3 py-2 pr-10 border border-gray-200 rounded-md focus:outline-none focus:border-blue-500 text-gray-800 placeholder-gray-400 text-xs shadow-inner"
                   autoFocus
                 />
                 <button
@@ -799,18 +783,16 @@ const handleBulkDelete = async (e: React.MouseEvent) => {
                 <div className="text-red-500 font-semibold bg-red-50 p-2 rounded border border-red-100 leading-relaxed text-[11px] animate-fadeIn"> {pwdError}</div>
               )}
 
-              <div className="text-[10px] text-gray-400 space-y-1 bg-gray-50 p-2.5 rounded border border-gray-100 select-none">
-                <div className="font-bold text-gray-500 mb-1">Mật khẩu tiêu chuẩn bao gồm:</div>
-                <div className={`flex items-center gap-1 ${newPassword.length >= 8 ? "text-green-600 font-medium" : ""}`}><span>{newPassword.length >= 8 ? "✓" : "•"}</span> Tối thiểu 8 ký tự</div>
-                <div className={`flex items-center gap-1 ${/[A-Z]/.test(newPassword) ? "text-green-600 font-medium" : ""}`}><span>{/[A-Z]/.test(newPassword) ? "✓" : "•"}</span> Có ít nhất 1 chữ hoa (A-Z)</div>
-                <div className={`flex items-center gap-1 ${/[a-z]/.test(newPassword) ? "text-green-600 font-medium" : ""}`}><span>{/[a-z]/.test(newPassword) ? "✓" : "•"}</span> Có ít nhất 1 chữ thường (a-z)</div>
-                <div className={`flex items-center gap-1 ${/[0-9]/.test(newPassword) ? "text-green-600 font-medium" : ""}`}><span>{/[0-9]/.test(newPassword) ? "✓" : "•"}</span> Có ít nhất 1 chữ số (0-9)</div>
-                <div className={`flex items-center gap-1 ${/[!@#$%^&*(),.?":{}|<>]/.test(newPassword) ? "text-green-600 font-medium" : ""}`}><span>{/[!@#$%^&*(),.?":{}|<>.]/.test(newPassword) ? "✓" : "•"}</span> Có ít nhất 1 ký tự đặc biệt</div>
-              </div>
-
-              <div className="flex items-center justify-end gap-4 pt-2 border-t border-gray-100">
+              <div className="flex items-center justify-end gap-3 pt-2">
                 <button type="button" onClick={() => { setShowResetPwdModal(false); setNewPassword(''); setPwdError(''); }} className="text-blue-600 hover:underline font-bold px-1 py-1.5 transition-colors cursor-pointer">Huỷ bỏ</button>
-                <button type="submit" className="bg-[#2F6BFF] hover:bg-blue-700 text-white font-bold px-4 py-1.5 rounded flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer">Lưu</button>
+                <button type="submit" className="bg-[#2F6BFF] hover:bg-blue-700 text-white font-bold px-4 py-1.5 rounded flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V7l-4-4z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 21v-8H7v8" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 3v5h8" />
+                  </svg>
+                  Lưu
+                </button>
               </div>
             </form>
           </div>
