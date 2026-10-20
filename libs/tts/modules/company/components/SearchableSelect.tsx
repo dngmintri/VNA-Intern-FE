@@ -77,16 +77,19 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     setSearchTerm('');
   };
 
-  const py = size === 'sm' ? 'py-1' : 'py-2';
+  const py = size === 'sm' ? 'py-1' : 'py-2.5';
+  const px = size === 'sm' ? 'px-2' : 'px-3';
+  const roundedClass = size === 'sm' ? 'rounded' : 'rounded-lg';
   const textClass = size === 'sm' ? 'text-[11px]' : 'text-sm';
+  const minHClass = size === 'sm' ? '' : 'min-h-[42px]';
 
   return (
     <div ref={containerRef} className={`relative w-full ${className}`}>
       <div
         onClick={() => !disabled && setIsOpen((prev) => !prev)}
-        className={`w-full px-2 ${py} border ${
-          error ? 'border-red-500' : 'border-gray-200'
-        } rounded ${textClass} font-normal text-gray-700 bg-white cursor-pointer flex items-center justify-between transition-colors hover:border-gray-400 focus:outline-none ${
+        className={`w-full ${px} ${py} border ${
+          error ? 'border-red-500' : 'border-gray-300'
+        } ${roundedClass} ${textClass} ${minHClass} font-normal text-gray-700 bg-white cursor-pointer flex items-center justify-between transition-colors hover:border-gray-400 focus:outline-none ${
           disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''
         }`}
       >

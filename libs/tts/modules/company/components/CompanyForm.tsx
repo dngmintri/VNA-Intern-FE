@@ -13,10 +13,20 @@ import { SearchableSelect } from './SearchableSelect';
 
 const formatToBEDate = (dateStr: string | null | undefined): string | null => {
   if (!dateStr) return null;
-  const parts = dateStr.split('-');
-  if (parts.length !== 3) return dateStr;
-  const [year, month, day] = parts;
-  return `${day}-${month}-${year}`;
+  let normalized = dateStr;
+  if (normalized.includes('T')) {
+    normalized = normalized.split('T')[0];
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    return normalized;
+  }
+  const sep = normalized.includes('/') ? '/' : '-';
+  const parts = normalized.split(sep);
+  if (parts.length === 3 && parts[0].length === 2 && parts[2].length === 4) {
+    const [day, month, year] = parts;
+    return `${year}-${month}-${day}`;
+  }
+  return normalized;
 };
 
 const formatToInputDate = (dateStr: string | null | undefined): string => {
@@ -71,28 +81,6 @@ interface Ward {
   provinceId: number;
 }
 
-interface CompanyProfileResponse {
-  taxCode: string;
-  companyName: string;
-  foreignCompanyName: string | null;
-  licenseIssueDate: string | null;
-  businessType: string | null;
-  businessIndustry: string | null;
-  email: string | null;
-  status: string;
-  provinceDKKD: string | null;
-  wardDKKD: string | null;
-  addressDKKD: string | null;
-  provinceHDKD: string | null;
-  wardHDKD: string | null;
-  addressHDKD: string | null;
-  representativeName: string | null;
-  representativePhone: string | null;
-  businessPhone: string | null;
-  gpkdFile: string | null;
-  gtkFile: string | null;
-}
-
 interface CompanyFormProps {
   taxCode?: string;
   onClose?: () => void;
@@ -134,6 +122,9 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
 
   const [previewData, setPreviewData] = useState<Record<string, string | null>>({});
 
+  const gpkdInputRef = useRef<HTMLInputElement>(null);
+  const gtkInputRef = useRef<HTMLInputElement>(null);
+
   const {
     register,
     handleSubmit,
@@ -174,6 +165,13 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
   const watchedHdkdProv = watch('business_operating_province');
   const watchedHdkdWard = watch('business_operating_ward');
 
+  const getFileUrl = (filePath: string | null | undefined): string => {
+    if (!filePath || filePath === 'none') return '';
+    if (filePath.startsWith('http')) return filePath;
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    return `${baseUrl}${filePath.startsWith('/') ? '' : '/uploads/documents/'}${filePath}`;
+  };
+
   useEffect(() => {
     const fetchMetadata = async () => {
       try {
@@ -203,10 +201,10 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
     const fetchCompanyProfile = async () => {
       try {
         let p: any = null;
-        if (taxCode.length > 20 && taxCode.includes('-')) {
+        try {
           const res = await api.get<{ data?: any } & any>(`/business/${taxCode}`);
           p = res.data?.data || res.data;
-        } else {
+        } catch {
           const res = await api.get<{ data?: { items: any[] } } & any>(`/business?search=${taxCode}`);
           const items = res.data?.data?.items || res.data?.items || [];
           p = items.find((item: any) => item.taxCode === taxCode) || items[0];
@@ -246,8 +244,8 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
           business_operating_adress: p.businessLocation || p.addressHDKD || '',
           representative_name: p.representativeName || '',
           representative_phone: p.representativePhone || '',
-          business_license_file_url: 'none',
-          other_document_file_url: '',
+          business_license_file_url: p.gpkdFilePath || 'none',
+          other_document_file_url: p.otherDocumentPath || '',
         });
       } catch (err: unknown) {
         const axiosError = err as AxiosError<{ message?: string }>;
@@ -365,41 +363,50 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
     }
   };
 
+  // When submitting Step 1: validate and transition to Step 2 for both Create & Edit
   const onSubmit = async (data: CompanyInput) => {
-    setIsSubmitting(true);
+    const matchedBt = businessTypes.find(bt => String(bt.id) === data.business_type || bt.code === data.business_type || bt.name === data.business_type);
+    const matchedBi = businessIndustries.find(bi => String(bi.id) === data.business_industry || bi.code === data.business_industry || bi.name === data.business_industry);
 
-    const payload = {
-      business_name: data.business_name.trim(),
-      tax_code: data.tax_code.trim(),
-      business_type: data.business_type,
-      business_industry: data.business_industry,
-      license_issue_date: data.license_issue_date ? formatToBEDate(data.license_issue_date) : null,
-      license_registration_province: data.license_registration_province,
-      license_registration_ward: data.license_registration_ward,
-      license_registration_adress: data.license_registration_adress || null,
-      foreign_business_name: data.foreign_business_name || null,
-      email: data.email.trim(),
-      business_phone: data.business_phone || null,
-      business_operating_province: data.business_operating_province || null,
-      business_operating_ward: data.business_operating_ward || null,
-      business_operating_adress: data.business_operating_adress || null,
-      representative_name: data.representative_name || null,
-      representative_phone: data.representative_phone || null,
-      business_license_file_url: data.business_license_file_url || null,
-      other_document_file_url: data.other_document_file_url || null,
-    };
+    setPreviewData({
+      companyName: data.business_name,
+      taxCode: data.tax_code,
+      foreignCompanyName: data.foreign_business_name || null,
+      businessType: matchedBt ? matchedBt.name : data.business_type,
+      businessIndustry: matchedBi ? (matchedBi.code ? `${matchedBi.code} - ${matchedBi.name}` : matchedBi.name) : data.business_industry,
+      licenseIssueDate: data.license_issue_date || null,
+      addressDKKD: data.license_registration_adress || '',
+      wardDKKD: data.license_registration_ward || '',
+      provinceDKKD: data.license_registration_province || '',
+      email: data.email,
+      businessPhone: data.business_phone || null,
+      representativeName: data.representative_name || null,
+      representativePhone: data.representative_phone || null,
+      addressHDKD: data.business_operating_adress || '',
+      wardHDKD: data.business_operating_ward || '',
+      provinceHDKD: data.business_operating_province || '',
+      gpkdFile: data.business_license_file_url && data.business_license_file_url !== 'none' ? data.business_license_file_url : null,
+      gtkFile: data.other_document_file_url || null,
+    });
+    setStep(2);
+  };
+
+  // Step 2 Confirm Action: executes PATCH (if edit) or POST (if create)
+  const handleConfirmSave = async () => {
+    setIsSubmitting(true);
+    const data = getValues();
+    
+    const matchedBt = businessTypes.find(bt => String(bt.id) === data.business_type || bt.code === data.business_type || bt.name === data.business_type);
+    const matchedBi = businessIndustries.find(bi => String(bi.id) === data.business_industry || bi.code === data.business_industry || bi.name === data.business_industry);
 
     if (isEditMode) {
       const targetId = companyId || taxCode;
-      const matchedBt = businessTypes.find(bt => String(bt.id) === data.business_type || bt.code === data.business_type || bt.name === data.business_type);
-      const matchedBi = businessIndustries.find(bi => String(bi.id) === data.business_industry || bi.code === data.business_industry || bi.name === data.business_industry);
-
       const updatePayload = {
         name: data.business_name.trim(),
         taxCode: data.tax_code.trim(),
         businessTypeId: matchedBt ? String(matchedBt.id) : (businessTypes[0]?.id ? String(businessTypes[0].id) : undefined),
         businessIndustryId: matchedBi ? String(matchedBi.id) : (businessIndustries[0]?.id ? String(businessIndustries[0].id) : undefined),
-        licenseDate: data.license_issue_date ? (data.license_issue_date.includes('-') && data.license_issue_date.split('-')[0].length === 4 ? data.license_issue_date : formatToBEDate(data.license_issue_date)) : null,
+        licenseDate: data.license_issue_date ? formatToBEDate(data.license_issue_date) : null,
         registeredProvince: data.license_registration_province || null,
         registeredDistrict: data.license_registration_ward || null,
         address: data.license_registration_adress || null,
@@ -411,6 +418,8 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
         businessLocation: data.business_operating_adress || null,
         representativeName: data.representative_name || null,
         representativePhone: data.representative_phone || null,
+        gpkdFilePath: data.business_license_file_url && data.business_license_file_url !== 'none' ? data.business_license_file_url : null,
+        otherDocumentPath: data.other_document_file_url || null,
       };
 
       try {
@@ -427,34 +436,13 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
       return;
     }
 
-    setPreviewData({
-      business_name: data.business_name,
-      tax_code: data.tax_code,
-      email: data.email,
-      business_type: data.business_type,
-      business_industry: data.business_industry,
-      license_registration_province: data.license_registration_province,
-      license_registration_ward: data.license_registration_ward,
-      representative_name: data.representative_name || '—',
-      business_phone: data.business_phone || '—',
-    });
-    setStep(2);
-    setIsSubmitting(false);
-  };
-
-  const handleConfirmCreate = async () => {
-    setIsSubmitting(true);
-    const data = getValues();
-    
-    const matchedBt = businessTypes.find(bt => String(bt.id) === data.business_type || bt.code === data.business_type || bt.name === data.business_type);
-    const matchedBi = businessIndustries.find(bi => String(bi.id) === data.business_industry || bi.code === data.business_industry || bi.name === data.business_industry);
-
+    // Create mode POST
     const payload = {
       name: data.business_name.trim(),
       taxCode: data.tax_code.trim(),
       businessTypeId: matchedBt ? String(matchedBt.id) : (businessTypes[0]?.id ? String(businessTypes[0].id) : data.business_type),
       businessIndustryId: matchedBi ? String(matchedBi.id) : (businessIndustries[0]?.id ? String(businessIndustries[0].id) : data.business_industry),
-      licenseDate: data.license_issue_date ? (data.license_issue_date.includes('-') && data.license_issue_date.split('-')[0].length === 4 ? data.license_issue_date : formatToBEDate(data.license_issue_date)) : null,
+      licenseDate: data.license_issue_date ? formatToBEDate(data.license_issue_date) : null,
       registeredProvince: data.license_registration_province || null,
       registeredDistrict: data.license_registration_ward || null,
       address: data.license_registration_adress || null,
@@ -466,6 +454,8 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
       businessLocation: data.business_operating_adress || null,
       representativeName: data.representative_name || null,
       representativePhone: data.representative_phone || null,
+      gpkdFilePath: data.business_license_file_url && data.business_license_file_url !== 'none' ? data.business_license_file_url : null,
+      otherDocumentPath: data.other_document_file_url || null,
       isActive: true,
     };
 
@@ -487,35 +477,60 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
   };
 
   const renderStepper = () => {
-    if (isEditMode) return null;
-
     return (
-      <div className="bg-white border-b border-gray-100 pt-4 pb-8 px-6 flex items-center justify-center flex-shrink-0 select-none">
-        <div className="flex items-center w-full max-w-xs">
-          <div className="flex flex-col items-center relative text-blue-600">
-            <div className={`rounded-full transition-colors duration-300 h-7 w-7 flex items-center justify-center border-2 font-bold text-xs ${
-              step >= 1 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-400 border-gray-300'
-            }`}>
-              1
+      <div className="py-2 px-6 flex items-center justify-center select-none border-b border-gray-100 pb-6 mb-6">
+        <div className="flex items-center">
+          {/* Step 1 */}
+          <div className="flex items-center gap-2.5">
+            <div
+              className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                step === 1
+                  ? 'bg-[#2F6BFF] text-white shadow-sm'
+                  : 'bg-[#2F6BFF] text-white'
+              }`}
+            >
+              {step > 1 ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                '1'
+              )}
             </div>
-            <div className="absolute top-8 left-1/2 -translate-x-1/2 text-center text-[10.5px] font-bold text-blue-600 whitespace-nowrap">
-              Nhập thông tin
-            </div>
+            <span
+              className={`text-sm font-semibold transition-colors ${
+                step >= 1 ? 'text-[#2F6BFF]' : 'text-gray-400'
+              }`}
+            >
+              Thông tin doanh nghiệp
+            </span>
           </div>
-          
-          <div className="flex-auto border-t-2 transition-colors duration-300 mx-2" style={{ borderColor: step >= 2 ? '#2F6BFF' : '#E2E8F0' }} />
-          
-          <div className="flex flex-col items-center relative">
-            <div className={`rounded-full transition-colors duration-300 h-7 w-7 flex items-center justify-center border-2 font-bold text-xs ${
-              step >= 2 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-450 border-gray-300'
-            }`}>
+
+          {/* Divider Line */}
+          <div
+            className={`w-20 md:w-36 h-[1.5px] mx-4 transition-colors ${
+              step >= 2 ? 'bg-[#2F6BFF]' : 'bg-gray-200'
+            }`}
+          />
+
+          {/* Step 2 */}
+          <div className="flex items-center gap-2.5">
+            <div
+              className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                step === 2
+                  ? 'bg-[#2F6BFF] text-white shadow-sm'
+                  : 'bg-white border border-gray-300 text-gray-400'
+              }`}
+            >
               2
             </div>
-            <div className={`absolute top-8 left-1/2 -translate-x-1/2 text-center text-[10.5px] font-bold whitespace-nowrap ${
-              step >= 2 ? 'text-blue-600' : 'text-gray-400'
-            }`}>
-              Kiểm tra thông tin
-            </div>
+            <span
+              className={`text-sm font-semibold transition-colors ${
+                step === 2 ? 'text-[#2F6BFF]' : 'text-gray-400'
+              }`}
+            >
+              Xác nhận đăng ký
+            </span>
           </div>
         </div>
       </div>
@@ -524,7 +539,7 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
 
   if (isLoadingMeta) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-[#F4F6F9] min-h-[70vh]">
+      <div className="flex-1 flex items-center justify-center bg-[#EAEDF2] min-h-[70vh]">
         <div className="text-sm font-medium text-gray-500 animate-pulse">
           Đang tải biểu mẫu doanh nghiệp...
         </div>
@@ -532,512 +547,680 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
     );
   }
 
+  // Hidden File Inputs
+  const renderHiddenFileInputs = () => (
+    <>
+      <input
+        type="file"
+        ref={gpkdInputRef}
+        onChange={(e) => handleFileUpload(e, 'gpkd')}
+        accept="image/*,application/pdf"
+        className="hidden"
+      />
+      <input
+        type="file"
+        ref={gtkInputRef}
+        onChange={(e) => handleFileUpload(e, 'gtk')}
+        accept="image/*,application/pdf"
+        className="hidden"
+      />
+    </>
+  );
 
-
+  // STEP 2: XÁC NHẬN ĐĂNG KÝ
   if (step === 2) {
     return (
-      <div className="flex-1 flex flex-col bg-[#F4F6F9] min-h-[70vh] font-sans">
-        <div className="bg-white px-6 py-3 flex items-center justify-between border-b border-gray-200 shadow-sm flex-shrink-0">
-          <h1 className="text-sm font-bold text-gray-800">Xác nhận thông tin doanh nghiệp</h1>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setStep(1)}
-              className="px-4 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
-            >
-              Trở lại
-            </button>
-            <button
-              onClick={handleConfirmCreate}
-              disabled={isSubmitting}
-              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors disabled:bg-blue-400"
-            >
-              {isSubmitting ? 'Đang khởi tạo...' : 'Xác nhận tạo'}
-            </button>
+      <div className="flex-1 flex flex-col bg-[#EAEDF2] min-h-[85vh] p-6 font-sans">
+        <div className="max-w-5xl mx-auto w-full">
+          <div className="mb-4">
+            <h1 className="text-lg font-bold text-gray-800">
+              {isEditMode ? 'Edit DN' : 'Thêm mới DN'}
+            </h1>
           </div>
-        </div>
-        {renderStepper()}
 
-        <div className="p-6 space-y-6 max-w-4xl mx-auto w-full">
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-6">
-            <div>
-              <h3 className="text-xs font-bold text-gray-800 border-b border-gray-100 pb-3 tracking-wide">
-                1. Thông tin pháp lý & ĐKKD
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-xs mt-4">
-                <div className="flex flex-col py-1">
-                  <span className="text-gray-400 font-medium mb-1">Tên doanh nghiệp:</span>
-                  <span className="font-semibold text-gray-800">{previewData.companyName}</span>
+          {/* Big White Card */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-6 md:p-8 space-y-6">
+            {renderStepper()}
+
+            {/* Card: Thông tin về hồ sơ */}
+            <div className="border border-gray-200 rounded-xl p-6 bg-white">
+              <h2 className="text-base font-bold text-gray-800 mb-5">Thông tin về hồ sơ</h2>
+
+              <div className="space-y-3.5 text-sm">
+                <div className="grid grid-cols-1 md:grid-cols-12 items-baseline py-1">
+                  <span className="md:col-span-4 font-semibold text-gray-700">Mã số thuế :</span>
+                  <span className="md:col-span-8 font-bold text-gray-900">{previewData.taxCode}</span>
                 </div>
-                <div className="flex flex-col py-1">
-                  <span className="text-gray-400 font-medium mb-1">Mã số thuế:</span>
-                  <span className="font-semibold text-gray-800">{previewData.taxCode}</span>
+                <div className="grid grid-cols-1 md:grid-cols-12 items-baseline py-1">
+                  <span className="md:col-span-4 font-semibold text-gray-700">Tên doanh nghiệp :</span>
+                  <span className="md:col-span-8 text-gray-900">{previewData.companyName}</span>
                 </div>
-                <div className="flex flex-col py-1">
-                  <span className="text-gray-400 font-medium mb-1">Tên tiếng nước ngoài:</span>
-                  <span className="font-semibold text-gray-800">{previewData.foreignCompanyName || '—'}</span>
+                <div className="grid grid-cols-1 md:grid-cols-12 items-baseline py-1">
+                  <span className="md:col-span-4 font-semibold text-gray-700">Tên viết bằng tiếng nước ngoài :</span>
+                  <span className="md:col-span-8 text-gray-900">{previewData.foreignCompanyName || '—'}</span>
                 </div>
-                <div className="flex flex-col py-1">
-                  <span className="text-gray-400 font-medium mb-1">Loại hình doanh nghiệp:</span>
-                  <span className="font-semibold text-gray-800">{previewData.businessType}</span>
-                </div>
-                <div className="flex flex-col py-1">
-                  <span className="text-gray-400 font-medium mb-1">Ngành nghề kinh doanh:</span>
-                  <span className="font-semibold text-gray-800">{previewData.businessIndustry}</span>
-                </div>
-                <div className="flex flex-col py-1">
-                  <span className="text-gray-400 font-medium mb-1">Ngày cấp GPKD:</span>
-                  <span className="font-semibold text-gray-800">
+                <div className="grid grid-cols-1 md:grid-cols-12 items-baseline py-1">
+                  <span className="md:col-span-4 font-semibold text-gray-700">Ngày cấp GPKD:</span>
+                  <span className="md:col-span-8 text-gray-900">
                     {previewData.licenseIssueDate ? formatDisplayDate(previewData.licenseIssueDate) : '—'}
                   </span>
                 </div>
-                <div className="flex flex-col py-1 md:col-span-2">
-                  <span className="text-gray-400 font-medium mb-1">Địa chỉ đăng ký kinh doanh:</span>
-                  <span className="font-semibold text-gray-800">
-                    {`${previewData.addressDKKD || ''}, ${previewData.wardDKKD || ''}, ${previewData.provinceDKKD || ''}`}
+                <div className="grid grid-cols-1 md:grid-cols-12 items-baseline py-1">
+                  <span className="md:col-span-4 font-semibold text-gray-700">Email</span>
+                  <span className="md:col-span-8 text-gray-900">{previewData.email}</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-12 items-baseline py-1">
+                  <span className="md:col-span-4 font-semibold text-gray-700">Loại hình kinh doanh:</span>
+                  <span className="md:col-span-8 text-gray-900">{previewData.businessType || '—'}</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-12 items-baseline py-1">
+                  <span className="md:col-span-4 font-semibold text-gray-700">Ngành nghề kinh doanh</span>
+                  <span className="md:col-span-8 text-gray-900">{previewData.businessIndustry || '—'}</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-12 items-baseline py-1">
+                  <span className="md:col-span-4 font-semibold text-gray-700">Địa chỉ đăng kí giấy phép kinh doanh :</span>
+                  <span className="md:col-span-8 text-gray-900">
+                    {[previewData.addressDKKD, previewData.wardDKKD, previewData.provinceDKKD].filter(Boolean).join(', ') || '—'}
                   </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-12 items-baseline py-1">
+                  <span className="md:col-span-4 font-semibold text-gray-700">Địa điểm kinh doanh :</span>
+                  <span className="md:col-span-8 text-gray-900">
+                    {[previewData.addressHDKD, previewData.wardHDKD, previewData.provinceHDKD].filter(Boolean).join(', ') || '—'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-12 items-baseline py-1">
+                  <span className="md:col-span-4 font-semibold text-gray-700">Người đứng đầu doanh nghiệp</span>
+                  <span className="md:col-span-8 text-gray-900">{previewData.representativeName || '—'}</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-12 items-baseline py-1">
+                  <span className="md:col-span-4 font-semibold text-gray-700">SĐT người đứng đầu</span>
+                  <span className="md:col-span-8 text-gray-900">{previewData.representativePhone || '—'}</span>
                 </div>
               </div>
             </div>
 
+            {/* Section: File đính kèm */}
             <div>
-              <h3 className="text-xs font-bold text-gray-800 border-b border-gray-100 pb-3 tracking-wide mt-2">
-                2. Thông tin liên hệ & HĐKD
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-xs mt-4">
-                <div className="flex flex-col py-1">
-                  <span className="text-gray-400 font-medium mb-1">Email doanh nghiệp:</span>
-                  <span className="font-semibold text-gray-800">{previewData.email}</span>
-                </div>
-                <div className="flex flex-col py-1">
-                  <span className="text-gray-400 font-medium mb-1">Điện thoại doanh nghiệp:</span>
-                  <span className="font-semibold text-gray-800">{previewData.businessPhone || '—'}</span>
-                </div>
-                <div className="flex flex-col py-1">
-                  <span className="text-gray-400 font-medium mb-1">Người đại diện pháp luật:</span>
-                  <span className="font-semibold text-gray-800">{previewData.representativeName || '—'}</span>
-                </div>
-                <div className="flex flex-col py-1">
-                  <span className="text-gray-400 font-medium mb-1">Điện thoại người đại diện:</span>
-                  <span className="font-semibold text-gray-800">{previewData.representativePhone || '—'}</span>
-                </div>
-                <div className="flex flex-col py-1 md:col-span-2">
-                  <span className="text-gray-400 font-medium mb-1">Địa chỉ hoạt động kinh doanh:</span>
-                  <span className="font-semibold text-gray-800">
-                    {previewData.provinceHDKD
-                      ? `${previewData.addressHDKD || ''}, ${previewData.wardHDKD || ''}, ${previewData.provinceHDKD || ''}`
-                      : '—'}
-                  </span>
-                </div>
-                <div className="flex flex-col py-1">
-                  <span className="text-gray-400 font-medium mb-1">Giấy phép kinh doanh (file):</span>
-                  {previewData.gpkdFile ? (
-                    <a
-                      href={previewData.gpkdFile.startsWith('http') ? previewData.gpkdFile : `http://localhost:8080/uploads/${previewData.gpkdFile}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-semibold text-blue-600 hover:underline truncate max-w-xs"
-                    >
-                      {previewData.gpkdFile}
-                    </a>
-                  ) : (
-                    <span className="font-semibold text-gray-500">—</span>
-                  )}
-                </div>
-                <div className="flex flex-col py-1">
-                  <span className="text-gray-400 font-medium mb-1">Tài liệu khác đính kèm:</span>
-                  {previewData.gtkFile ? (
-                    <a
-                      href={previewData.gtkFile.startsWith('http') ? previewData.gtkFile : `http://localhost:8080/uploads/${previewData.gtkFile}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-semibold text-blue-600 hover:underline truncate max-w-xs"
-                    >
-                      {previewData.gtkFile}
-                    </a>
-                  ) : (
-                    <span className="font-semibold text-gray-500">—</span>
-                  )}
-                </div>
+              <h2 className="text-base font-bold text-gray-800 mb-3">File đính kèm</h2>
+              <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="w-72 px-5 py-3 text-xs font-semibold text-gray-700">Tên file</th>
+                      <th className="px-5 py-3 text-xs font-semibold text-gray-700">Thông tin file</th>
+                      <th className="w-32 px-5 py-3 text-center text-xs font-semibold text-gray-700">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 text-sm">
+                    {/* Row 1: Giấy phép kinh doanh */}
+                    <tr>
+                      <td className="px-5 py-3.5 font-medium text-gray-800">Giấy phép kinh doanh</td>
+                      <td className="px-5 py-3.5">
+                        {previewData.gpkdFile && previewData.gpkdFile !== 'none' ? (
+                          <span className="text-gray-800 font-medium truncate max-w-md block" title={previewData.gpkdFile}>
+                            {previewData.gpkdFile.split('/').pop()}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">Chưa có file</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5 text-center">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (previewData.gpkdFile && previewData.gpkdFile !== 'none') {
+                              window.open(getFileUrl(previewData.gpkdFile), '_blank');
+                            }
+                          }}
+                          disabled={!previewData.gpkdFile || previewData.gpkdFile === 'none'}
+                          className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer inline-flex items-center justify-center"
+                          title="Xem tài liệu"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+
+                    {/* Row 2: Giấy tờ khác */}
+                    <tr>
+                      <td className="px-5 py-3.5 font-medium text-gray-800">Giấy tờ khác</td>
+                      <td className="px-5 py-3.5">
+                        {previewData.gtkFile ? (
+                          <span className="text-gray-800 font-medium truncate max-w-md block" title={previewData.gtkFile}>
+                            {previewData.gtkFile.split('/').pop()}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">Chưa có file</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5 text-center">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (previewData.gtkFile) {
+                              window.open(getFileUrl(previewData.gtkFile), '_blank');
+                            }
+                          }}
+                          disabled={!previewData.gtkFile}
+                          className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer inline-flex items-center justify-center"
+                          title="Xem tài liệu"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
+          </div>
+
+          {/* Step 2 Footer */}
+          <div className="flex items-center justify-end gap-3 pt-4 pb-6">
+            <button
+              type="button"
+              onClick={() => setStep(1)}
+              className="px-5 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+            >
+              Trở về
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmSave}
+              disabled={isSubmitting}
+              className="px-6 py-2.5 bg-[#2F6BFF] hover:bg-blue-600 text-white text-sm font-semibold rounded-lg shadow-sm flex items-center gap-2 transition-colors cursor-pointer disabled:bg-blue-300"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+              </svg>
+              {isSubmitting ? (isEditMode ? 'Đang cập nhật...' : 'Đang tạo...') : 'Xác nhận'}
+            </button>
           </div>
         </div>
       </div>
     );
   }
 
+  // STEP 1: NHẬP / CHỈNH SỬA THÔNG TIN
   return (
-    <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="flex-1 flex flex-col bg-[#F4F6F9] min-h-[70vh] font-sans">
-      <div className="bg-white px-6 py-3 flex items-center justify-between border-b border-gray-200 shadow-sm flex-shrink-0">
-        <h1 className="text-sm font-bold text-gray-800">
-          {isEditMode ? `Cập nhật doanh nghiệp: ${taxCode}` : 'Thêm mới doanh nghiệp'}
-        </h1>
-        <div className="flex items-center gap-3">
+    <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="flex-1 flex flex-col bg-[#EAEDF2] min-h-[85vh] p-6 font-sans">
+      {renderHiddenFileInputs()}
+
+      <div className="max-w-5xl mx-auto w-full">
+        <div className="mb-4">
+          <h1 className="text-lg font-bold text-gray-800">
+            {isEditMode ? 'Edit DN' : 'Thêm mới DN'}
+          </h1>
+        </div>
+
+        {/* Big White Card */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-6 md:p-8 space-y-6">
+          {renderStepper()}
+
+          {/* Phần 1: Cập nhật doanh nghiệp / Thêm mới doanh nghiệp */}
+          <div className="border border-gray-200 rounded-xl p-6 bg-white">
+            <h2 className="text-base font-bold text-gray-800 mb-5">
+              {isEditMode ? 'Cập nhật doanh nghiệp' : 'Thêm mới doanh nghiệp'}
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-5 gap-y-5">
+              {/* Row 1, Col 1: Tên doanh nghiệp * */}
+              <div id="field-business_name" className="relative">
+                <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10">
+                  Tên doanh nghiệp <span className="text-red-500">*</span>
+                </label>
+                <input
+                  {...register('business_name')}
+                  type="text"
+                  className="w-full h-[42px] px-3 border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:border-blue-500 transition-colors"
+                />
+                {errors.business_name && (
+                  <span className="text-[11px] text-red-500 mt-1 block">{errors.business_name.message}</span>
+                )}
+              </div>
+
+              {/* Row 1, Col 2: Mã số thuế * */}
+              <div id="field-tax_code" className="relative">
+                <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10">
+                  Mã số thuế <span className="text-red-500">*</span>
+                </label>
+                <input
+                  {...register('tax_code')}
+                  type="text"
+                  disabled={isEditMode}
+                  className="w-full h-[42px] px-3 border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:border-blue-500 transition-colors disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                />
+                {errors.tax_code && (
+                  <span className="text-[11px] text-red-500 mt-1 block">{errors.tax_code.message}</span>
+                )}
+              </div>
+
+              {/* Row 1, Col 3: Loại hình kinh doanh * */}
+              <div id="field-business_type" className="relative">
+                <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10">
+                  Loại hình kinh doanh <span className="text-red-500">*</span>
+                </label>
+                <select
+                  {...register('business_type')}
+                  className="w-full h-[42px] px-3 border border-gray-300 rounded-lg text-sm text-gray-800 bg-white focus:outline-none focus:border-blue-500 transition-colors cursor-pointer"
+                >
+                  <option value="">Chọn loại hình</option>
+                  {businessTypes.map((bt) => (
+                    <option key={bt.id} value={bt.name}>
+                      {bt.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.business_type && (
+                  <span className="text-[11px] text-red-500 mt-1 block">{errors.business_type.message}</span>
+                )}
+              </div>
+
+              {/* Row 2, Col 1: Ngành nghề kinh doanh chính * */}
+              <div id="field-business_industry" className="relative">
+                <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10">
+                  Ngành nghề kinh doanh chính <span className="text-red-500">*</span>
+                </label>
+                <SearchableSelect
+                  size="md"
+                  options={businessIndustries.map((bi) => ({ value: bi.name, label: bi.code ? `${bi.code} - ${bi.name}` : bi.name }))}
+                  value={watchedBusinessIndustry || ''}
+                  onChange={(val) => setValue('business_industry', val, { shouldValidate: true })}
+                  placeholder="Chọn ngành nghề"
+                  error={errors.business_industry?.message}
+                />
+                {errors.business_industry && (
+                  <span className="text-[11px] text-red-500 mt-1 block">{errors.business_industry.message}</span>
+                )}
+              </div>
+
+              {/* Row 2, Col 2: Ngày cấp GPKD */}
+              <div id="field-license_issue_date" className="relative">
+                <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10">
+                  Ngày cấp GPKD
+                </label>
+                <input
+                  {...register('license_issue_date')}
+                  type="date"
+                  max={new Date().toLocaleDateString('en-CA')}
+                  className="w-full h-[42px] px-3 border border-gray-300 rounded-lg text-sm text-gray-800 bg-white focus:outline-none focus:border-blue-500 transition-colors cursor-pointer"
+                />
+                {errors.license_issue_date && (
+                  <span className="text-[11px] text-red-500 mt-1 block">{errors.license_issue_date.message}</span>
+                )}
+              </div>
+
+              {/* Row 2, Col 3: Tỉnh/Thành phố ĐKKD * */}
+              <div id="field-license_registration_province" className="relative">
+                <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10">
+                  Tỉnh/Thành phố ĐKKD <span className="text-red-500">*</span>
+                </label>
+                <SearchableSelect
+                  size="md"
+                  options={provinces.map((prov) => ({ value: prov.name, label: prov.name }))}
+                  value={watchedDkkdProv || ''}
+                  onChange={(val) => {
+                    setValue('license_registration_province', val, { shouldValidate: true });
+                    handleDkkdProvinceChange(val);
+                  }}
+                  placeholder="Chọn Tỉnh/Thành phố"
+                  error={errors.license_registration_province?.message}
+                />
+                {errors.license_registration_province && (
+                  <span className="text-[11px] text-red-500 mt-1 block">
+                    {errors.license_registration_province.message}
+                  </span>
+                )}
+              </div>
+
+              {/* Row 3, Col 1: Phường/Xã ĐKKD * */}
+              <div id="field-license_registration_ward" className="relative">
+                <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10">
+                  Phường/Xã ĐKKD <span className="text-red-500">*</span>
+                </label>
+                <SearchableSelect
+                  size="md"
+                  options={dkkdWards.map((w) => ({ value: w.name, label: w.name }))}
+                  value={watchedDkkdWard || ''}
+                  disabled={dkkdWards.length === 0}
+                  onChange={(val) => {
+                    setValue('license_registration_ward', val, { shouldValidate: true });
+                  }}
+                  placeholder={dkkdWards.length === 0 ? 'Chọn Tỉnh/TP trước' : 'Chọn Phường/Xã'}
+                  error={errors.license_registration_ward?.message}
+                />
+                {errors.license_registration_ward && (
+                  <span className="text-[11px] text-red-500 mt-1 block">
+                    {errors.license_registration_ward.message}
+                  </span>
+                )}
+              </div>
+
+              {/* Row 3, Col 2 & 3: Địa chỉ (col-span-2) */}
+              <div id="field-license_registration_adress" className="relative md:col-span-2">
+                <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10">
+                  Địa chỉ
+                </label>
+                <input
+                  {...register('license_registration_adress')}
+                  type="text"
+                  className="w-full h-[42px] px-3 border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Phần 2: Thông tin liên hệ */}
+          <div className="border border-gray-200 rounded-xl p-6 bg-white">
+            <h2 className="text-base font-bold text-gray-800 mb-5">Thông tin liên hệ</h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-5 gap-y-5">
+              {/* Row 1, Col 1: Tên viết bằng tiếng nước ngoài */}
+              <div id="field-foreign_business_name" className="relative">
+                <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10">
+                  Tên viết bằng tiếng nước ngoài
+                </label>
+                <input
+                  {...register('foreign_business_name')}
+                  type="text"
+                  className="w-full h-[42px] px-3 border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+
+              {/* Row 1, Col 2: Email * */}
+              <div id="field-email" className="relative">
+                <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10">
+                  Email <span className="text-red-500">*</span>
+                </label>
+                <input
+                  {...register('email')}
+                  type="email"
+                  className="w-full h-[42px] px-3 border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:border-blue-500 transition-colors"
+                />
+                {errors.email && (
+                  <span className="text-[11px] text-red-500 mt-1 block">{errors.email.message}</span>
+                )}
+              </div>
+
+              {/* Row 1, Col 3: Số điện thoại cơ quan */}
+              <div id="field-business_phone" className="relative">
+                <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10">
+                  Số điện thoại cơ quan
+                </label>
+                <input
+                  {...register('business_phone')}
+                  type="text"
+                  className="w-full h-[42px] px-3 border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:border-blue-500 transition-colors"
+                />
+                {errors.business_phone && (
+                  <span className="text-[11px] text-red-500 mt-1 block">{errors.business_phone.message}</span>
+                )}
+              </div>
+
+              {/* Row 2, Col 1: Tỉnh/TP hoạt động KD */}
+              <div id="field-business_operating_province" className="relative">
+                <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10">
+                  Tỉnh/TP hoạt động KD
+                </label>
+                <SearchableSelect
+                  size="md"
+                  options={provinces.map((prov) => ({ value: prov.name, label: prov.name }))}
+                  value={watchedHdkdProv || ''}
+                  onChange={(val) => {
+                    setValue('business_operating_province', val);
+                    handleHdkdProvinceChange(val);
+                  }}
+                  placeholder="Chọn Tỉnh/TP"
+                />
+              </div>
+
+              {/* Row 2, Col 2: Phường/xã hoạt động KD */}
+              <div id="field-business_operating_ward" className="relative">
+                <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10">
+                  Phường/xã hoạt động KD
+                </label>
+                <SearchableSelect
+                  size="md"
+                  options={hdkdWards.map((w) => ({ value: w.name, label: w.name }))}
+                  value={watchedHdkdWard || ''}
+                  disabled={hdkdWards.length === 0}
+                  onChange={(val) => {
+                    setValue('business_operating_ward', val);
+                  }}
+                  placeholder={hdkdWards.length === 0 ? 'Chọn Tỉnh/TP trước' : 'Chọn Phường/Xã'}
+                />
+              </div>
+
+              {/* Row 2, Col 3: Empty placeholder for 3-col grid */}
+              <div className="hidden md:block"></div>
+
+              {/* Row 3, Col 1: Địa điểm kinh doanh */}
+              <div id="field-business_operating_adress" className="relative">
+                <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10">
+                  Địa điểm kinh doanh
+                </label>
+                <input
+                  {...register('business_operating_adress')}
+                  type="text"
+                  className="w-full h-[42px] px-3 border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+
+              {/* Row 3, Col 2: Người đứng đầu doanh nghiệp */}
+              <div id="field-representative_name" className="relative">
+                <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10">
+                  Người đứng đầu doanh nghiệp
+                </label>
+                <input
+                  {...register('representative_name')}
+                  type="text"
+                  className="w-full h-[42px] px-3 border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:border-blue-500 transition-colors"
+                />
+                {errors.representative_name && (
+                  <span className="text-[11px] text-red-500 mt-1 block">{errors.representative_name.message}</span>
+                )}
+              </div>
+
+              {/* Row 3, Col 3: SĐT liên hệ người đứng đầu */}
+              <div id="field-representative_phone" className="relative">
+                <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10">
+                  SĐT liên hệ người đứng đầu
+                </label>
+                <input
+                  {...register('representative_phone')}
+                  type="text"
+                  className="w-full h-[42px] px-3 border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:border-blue-500 transition-colors"
+                />
+                {errors.representative_phone && (
+                  <span className="text-[11px] text-red-500 mt-1 block">{errors.representative_phone.message}</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Phần 3: File đính kèm */}
+          <div>
+            <h2 className="text-base font-bold text-gray-800 mb-3">File đính kèm</h2>
+            <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="w-72 px-5 py-3 text-xs font-semibold text-gray-700">Tên file</th>
+                    <th className="px-5 py-3 text-xs font-semibold text-gray-700">Thông tin file</th>
+                    <th className="w-40 px-5 py-3 text-right text-xs font-semibold text-gray-700">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 text-sm">
+                  {/* Row 1: Giấy phép kinh doanh */}
+                  <tr>
+                    <td className="px-5 py-3.5 font-medium text-gray-800">Giấy phép kinh doanh</td>
+                    <td className="px-5 py-3.5">
+                      {gpkdUploading ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-32 bg-gray-200 h-2 rounded-full overflow-hidden">
+                            <div className="bg-[#2F6BFF] h-full transition-all" style={{ width: `${gpkdProgress}%` }} />
+                          </div>
+                          <span className="text-xs text-gray-500 font-medium">{gpkdProgress}%</span>
+                        </div>
+                      ) : gpkdFileVal && gpkdFileVal !== 'none' ? (
+                        <span className="text-gray-800 font-medium truncate max-w-md block" title={gpkdFileVal}>
+                          {gpkdFileVal.split('/').pop()}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">Chưa có file</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {/* View */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (gpkdFileVal && gpkdFileVal !== 'none') {
+                              window.open(getFileUrl(gpkdFileVal), '_blank');
+                            }
+                          }}
+                          disabled={!gpkdFileVal || gpkdFileVal === 'none'}
+                          className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                          title="Xem tài liệu"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </button>
+
+                        {/* Upload */}
+                        <button
+                          type="button"
+                          onClick={() => gpkdInputRef.current?.click()}
+                          className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                          title="Tải lên tài liệu"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                          </svg>
+                        </button>
+
+                        {/* Delete */}
+                        <button
+                          type="button"
+                          onClick={() => setValue('business_license_file_url', '')}
+                          disabled={!gpkdFileVal || gpkdFileVal === 'none'}
+                          className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                          title="Xóa tài liệu"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  {/* Row 2: Giấy tờ khác */}
+                  <tr>
+                    <td className="px-5 py-3.5 font-medium text-gray-800">Giấy tờ khác</td>
+                    <td className="px-5 py-3.5">
+                      {gtkUploading ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-32 bg-gray-200 h-2 rounded-full overflow-hidden">
+                            <div className="bg-[#2F6BFF] h-full transition-all" style={{ width: `${gtkProgress}%` }} />
+                          </div>
+                          <span className="text-xs text-gray-500 font-medium">{gtkProgress}%</span>
+                        </div>
+                      ) : gtkFileVal ? (
+                        <span className="text-gray-800 font-medium truncate max-w-md block" title={gtkFileVal}>
+                          {gtkFileVal.split('/').pop()}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">Chưa có file</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {/* View */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (gtkFileVal) {
+                              window.open(getFileUrl(gtkFileVal), '_blank');
+                            }
+                          }}
+                          disabled={!gtkFileVal}
+                          className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                          title="Xem tài liệu"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </button>
+
+                        {/* Upload */}
+                        <button
+                          type="button"
+                          onClick={() => gtkInputRef.current?.click()}
+                          className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                          title="Tải lên tài liệu"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                          </svg>
+                        </button>
+
+                        {/* Delete */}
+                        <button
+                          type="button"
+                          onClick={() => setValue('other_document_file_url', '')}
+                          disabled={!gtkFileVal}
+                          className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                          title="Xóa tài liệu"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            {errors.business_license_file_url && (
+              <span className="text-[11px] text-red-500 mt-1 block">
+                {errors.business_license_file_url.message}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Step 1 Footer */}
+        <div className="flex items-center justify-end gap-3 pt-4 pb-6">
           <button
             type="button"
-            onClick={() => handleClose()}
-            className="px-4 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
+            onClick={handleClose}
+            className="px-5 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
           >
             Hủy bỏ
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors flex items-center gap-1.5 disabled:bg-blue-400"
+            className="px-6 py-2.5 bg-[#2F6BFF] hover:bg-blue-600 text-white text-sm font-semibold rounded-lg shadow-sm flex items-center gap-2 transition-colors cursor-pointer disabled:bg-blue-300"
           >
-            {isSubmitting ? 'Đang tải...' : isEditMode ? 'Lưu cập nhật' : 'Tiếp tục'}
+            Tiếp tục
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+            </svg>
           </button>
-        </div>
-      </div>
-      {renderStepper()}
-
-      <div className="p-6 max-w-4xl mx-auto w-full space-y-6">
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-5">
-          <h3 className="text-xs font-bold text-gray-800 border-b border-gray-100 pb-3 tracking-wide">
-            1. Thông tin pháp lý & đăng ký kinh doanh
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-xs">
-            <div id="field-business_name" className="relative mt-2">
-              <label className="absolute -top-2 left-2 bg-white px-1 text-gray-600 font-semibold scale-90 origin-left z-10">
-                Tên doanh nghiệp <span className="text-red-500">*</span>
-              </label>
-              <input
-                {...register('business_name')}
-                type="text"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 text-gray-700"
-              />
-              {errors.business_name && (
-                <span className="text-[10px] text-red-500 mt-1 block">{errors.business_name.message}</span>
-              )}
-            </div>
-
-            <div id="field-tax_code" className="relative mt-2">
-              <label className="absolute -top-2 left-2 bg-white px-1 text-gray-600 font-semibold scale-90 origin-left z-10">
-                Mã số thuế <span className="text-red-500">*</span>
-              </label>
-              <input
-                {...register('tax_code')}
-                type="text"
-                disabled={isEditMode}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 text-gray-700 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
-              />
-              {errors.tax_code && (
-                <span className="text-[10px] text-red-500 mt-1 block">{errors.tax_code.message}</span>
-              )}
-            </div>
-
-            <div id="field-foreign_business_name" className="relative mt-2">
-              <label className="absolute -top-2 left-2 bg-white px-1 text-gray-600 font-semibold scale-90 origin-left z-10">
-                Tên tiếng nước ngoài
-              </label>
-              <input
-                {...register('foreign_business_name')}
-                type="text"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 text-gray-700"
-              />
-            </div>
-
-            <div id="field-business_type" className="relative mt-2">
-              <label className="absolute -top-2 left-2 bg-white px-1 text-gray-600 font-semibold scale-90 origin-left z-10">
-                Loại hình doanh nghiệp <span className="text-red-500">*</span>
-              </label>
-              <select
-                {...register('business_type')}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-white focus:outline-none focus:border-blue-500 text-gray-700"
-              >
-                <option value="">Chọn loại hình</option>
-                {businessTypes.map((bt) => (
-                  <option key={bt.id} value={bt.name}>
-                    {bt.name}
-                  </option>
-                ))}
-              </select>
-              {errors.business_type && (
-                <span className="text-[10px] text-red-500 mt-1 block">{errors.business_type.message}</span>
-              )}
-            </div>
-
-            <div id="field-business_industry" className="relative mt-2">
-              <label className="absolute -top-2 left-2 bg-white px-1 text-gray-600 font-semibold scale-90 origin-left z-10 text-gray-600">
-                Ngành nghề kinh doanh chính <span className="text-red-500">*</span>
-              </label>
-              <SearchableSelect
-                options={businessIndustries.map((bi) => ({ value: bi.name, label: bi.code ? `${bi.code} - ${bi.name}` : bi.name }))}
-                value={watchedBusinessIndustry || ''}
-                onChange={(val) => setValue('business_industry', val, { shouldValidate: true })}
-                placeholder=""
-                error={errors.business_industry?.message}
-              />
-              {errors.business_industry && (
-                <span className="text-[10px] text-red-500 mt-1 block">{errors.business_industry.message}</span>
-              )}
-            </div>
-
-            <div id="field-license_issue_date" className="relative mt-2">
-              <label className="absolute -top-2 left-2 bg-white px-1 text-gray-600 font-semibold scale-90 origin-left z-10">
-                Ngày cấp GPKD
-              </label>
-              <input
-                {...register('license_issue_date')}
-                type="date"
-                max={new Date().toLocaleDateString('en-CA')}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 bg-white text-gray-900 font-medium"
-              />
-
-              {errors.license_issue_date && (
-                <span className="text-[10px] text-red-500 mt-1 block">{errors.license_issue_date.message}</span>
-              )}
-            </div>
-
-            <div id="field-license_registration_province" className="relative mt-2">
-              <label className="absolute -top-2 left-2 bg-white px-1 text-gray-600 font-semibold scale-90 origin-left z-10 text-gray-600">
-                Tỉnh/Thành phố ĐKKD <span className="text-red-500">*</span>
-              </label>
-              <SearchableSelect
-                options={provinces.map((prov) => ({ value: prov.name, label: prov.name }))}
-                value={watchedDkkdProv || ''}
-                onChange={(val) => {
-                  setValue('license_registration_province', val, { shouldValidate: true });
-                  handleDkkdProvinceChange(val);
-                }}
-                placeholder=""
-                error={errors.license_registration_province?.message}
-              />
-              {errors.license_registration_province && (
-                <span className="text-[10px] text-red-500 mt-1 block">
-                  {errors.license_registration_province.message}
-                </span>
-              )}
-            </div>
-
-            <div id="field-license_registration_ward" className="relative mt-2">
-              <label className="absolute -top-2 left-2 bg-white px-1 text-gray-600 font-semibold scale-90 origin-left z-10 text-gray-600">
-                Phường/Xã ĐKKD <span className="text-red-500">*</span>
-              </label>
-              <SearchableSelect
-                options={dkkdWards.map((w) => ({ value: w.name, label: w.name }))}
-                value={watchedDkkdWard || ''}
-                disabled={dkkdWards.length === 0}
-                onChange={(val) => {
-                  setValue('license_registration_ward', val, { shouldValidate: true });
-                }}
-                placeholder=""
-                error={errors.license_registration_ward?.message}
-              />
-              {errors.license_registration_ward && (
-                <span className="text-[10px] text-red-500 mt-1 block">
-                  {errors.license_registration_ward.message}
-                </span>
-              )}
-            </div>
-
-            <div id="field-license_registration_adress" className="relative mt-2 md:col-span-2">
-              <label className="absolute -top-2 left-2 bg-white px-1 text-gray-600 font-semibold scale-90 origin-left z-10">
-                Địa chỉ chi tiết ĐKKD
-              </label>
-              <input
-                {...register('license_registration_adress')}
-                type="text"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 text-gray-700"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-5">
-          <h3 className="text-xs font-bold text-gray-800 border-b border-gray-100 pb-3 tracking-wide">
-            2. Thông tin liên hệ & địa chỉ hoạt động kinh doanh
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-xs">
-            <div id="field-email" className="relative mt-2">
-              <label className="absolute -top-2 left-2 bg-white px-1 text-gray-600 font-semibold scale-90 origin-left z-10">
-                Email doanh nghiệp <span className="text-red-500">*</span>
-              </label>
-              <input
-                {...register('email')}
-                type="email"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 text-gray-700"
-              />
-              {errors.email && <span className="text-[10px] text-red-500 mt-1 block">{errors.email.message}</span>}
-            </div>
-
-            <div id="field-business_phone" className="relative mt-2">
-              <label className="absolute -top-2 left-2 bg-white px-1 text-gray-600 font-semibold scale-90 origin-left z-10">
-                Điện thoại doanh nghiệp
-              </label>
-              <input
-                {...register('business_phone')}
-                type="text"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 text-gray-700"
-              />
-              {errors.business_phone && (
-                <span className="text-[10px] text-red-500 mt-1 block">{errors.business_phone.message}</span>
-              )}
-            </div>
-
-            <div id="field-representative_name" className="relative mt-2">
-              <label className="absolute -top-2 left-2 bg-white px-1 text-gray-600 font-semibold scale-90 origin-left z-10">
-                Người đại diện pháp luật
-              </label>
-              <input
-                {...register('representative_name')}
-                type="text"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 text-gray-700"
-              />
-              {errors.representative_name && (
-                <span className="text-[10px] text-red-500 mt-1 block">{errors.representative_name.message}</span>
-              )}
-            </div>
-
-            <div id="field-representative_phone" className="relative mt-2">
-              <label className="absolute -top-2 left-2 bg-white px-1 text-gray-600 font-semibold scale-90 origin-left z-10">
-                Điện thoại người đại diện
-              </label>
-              <input
-                {...register('representative_phone')}
-                type="text"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 text-gray-700"
-              />
-              {errors.representative_phone && (
-                <span className="text-[10px] text-red-500 mt-1 block">{errors.representative_phone.message}</span>
-              )}
-            </div>
-
-            <div id="field-business_operating_province" className="relative mt-2">
-              <label className="absolute -top-2 left-2 bg-white px-1 text-gray-600 font-semibold scale-90 origin-left z-10 text-gray-600">
-                Tỉnh/Thành phố HĐKD
-              </label>
-              <SearchableSelect
-                options={provinces.map((prov) => ({ value: prov.name, label: prov.name }))}
-                value={watchedHdkdProv || ''}
-                onChange={(val) => {
-                  setValue('business_operating_province', val);
-                  handleHdkdProvinceChange(val);
-                }}
-                placeholder=""
-              />
-            </div>
-
-            <div id="field-business_operating_ward" className="relative mt-2">
-              <label className="absolute -top-2 left-2 bg-white px-1 text-gray-600 font-semibold scale-90 origin-left z-10 text-gray-600">
-                Phường/Xã HĐKD
-              </label>
-              <SearchableSelect
-                options={hdkdWards.map((w) => ({ value: w.name, label: w.name }))}
-                value={watchedHdkdWard || ''}
-                disabled={hdkdWards.length === 0}
-                onChange={(val) => {
-                  setValue('business_operating_ward', val);
-                }}
-                placeholder=""
-              />
-            </div>
-
-            <div id="field-business_operating_adress" className="relative mt-2 md:col-span-2">
-              <label className="absolute -top-2 left-2 bg-white px-1 text-gray-600 font-semibold scale-90 origin-left z-10">
-                Địa chỉ chi tiết HĐKD
-              </label>
-              <input
-                {...register('business_operating_adress')}
-                type="text"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 text-gray-700"
-              />
-            </div>
-
-            <div id="field-business_license_file_url" className="mt-2 md:col-span-1">
-              <span className="text-gray-600 font-semibold block mb-1">
-                Giấy phép đăng ký kinh doanh (GPKD) <span className="text-red-500">*</span>
-              </span>
-              <div className="flex items-center gap-3">
-                <label className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-50 cursor-pointer transition-colors">
-                  Tải lên tài liệu
-                  <input
-                    type="file"
-                    onChange={(e) => handleFileUpload(e, 'gpkd')}
-                    accept="image/*,application/pdf"
-                    className="hidden"
-                  />
-                </label>
-                {gpkdUploading && (
-                  <div className="w-24 bg-gray-100 h-2 rounded-full overflow-hidden">
-                    <div className="bg-blue-600 h-full transition-all duration-200" style={{ width: `${gpkdProgress}%` }} />
-                  </div>
-                )}
-                {gpkdFileVal && !gpkdUploading && (
-                  <div className="flex items-center gap-1.5 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-200">
-                    <a
-                      href={gpkdFileVal.startsWith('http') ? gpkdFileVal : `http://localhost:8080/uploads/${gpkdFileVal}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline font-semibold truncate max-w-[150px]"
-                      title="Xem file đã tải lên"
-                    >
-                      {gpkdFileVal}
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => setValue('business_license_file_url', '')}
-                      className="text-red-500 hover:text-red-700 font-bold px-1 hover:bg-gray-200/60 rounded transition-colors cursor-pointer"
-                      title="Gỡ bỏ tài liệu"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )}
-              </div>
-              {errors.business_license_file_url && (
-                <span className="text-[10px] text-red-500 mt-1 block">
-                  {errors.business_license_file_url.message}
-                </span>
-              )}
-            </div>
-
-            <div id="field-other_document_file_url" className="mt-2 md:col-span-1">
-              <span className="text-gray-600 font-semibold block mb-1">Tài liệu khác đính kèm</span>
-              <div className="flex items-center gap-3">
-                <label className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-50 cursor-pointer transition-colors">
-                  Tải lên tài liệu
-                  <input
-                    type="file"
-                    onChange={(e) => handleFileUpload(e, 'gtk')}
-                    accept="image/*,application/pdf"
-                    className="hidden"
-                  />
-                </label>
-                {gtkUploading && (
-                  <div className="w-24 bg-gray-100 h-2 rounded-full overflow-hidden">
-                    <div className="bg-blue-600 h-full transition-all duration-200" style={{ width: `${gtkProgress}%` }} />
-                  </div>
-                )}
-                {gtkFileVal && !gtkUploading && (
-                  <div className="flex items-center gap-1.5 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-200">
-                    <a
-                      href={gtkFileVal.startsWith('http') ? gtkFileVal : `http://localhost:8080/uploads/${gtkFileVal}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline font-semibold truncate max-w-[150px]"
-                      title="Xem file đã tải lên"
-                    >
-                      {gtkFileVal}
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => setValue('other_document_file_url', '')}
-                      className="text-red-500 hover:text-red-700 font-bold px-1 hover:bg-gray-200/60 rounded transition-colors cursor-pointer"
-                      title="Gỡ bỏ tài liệu"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </form>

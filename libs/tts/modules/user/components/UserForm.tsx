@@ -40,7 +40,8 @@ export const UserForm: React.FC<UserFormProps> = ({
 
   // Form states
   const [username, setUsername] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
+  // Mặc định mật khẩu đề xuất là 12345678 khi thêm mới
+  const [password, setPassword] = useState<string>(isModeCreate ? '12345678' : '');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [fullName, setFullName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
@@ -61,6 +62,33 @@ export const UserForm: React.FC<UserFormProps> = ({
   const [wards, setWards] = useState<Ward[]>([]);
   const [selectedProvinceId, setSelectedProvinceId] = useState<string>('');
   const [selectedWardId, setSelectedWardId] = useState<string>('');
+
+  // Modal thay đổi email bằng OTP
+  const [emailModalOpen, setEmailModalOpen] = useState<boolean>(false);
+  const [emailStep, setEmailStep] = useState<1 | 2>(1);
+  const [otpCode, setOtpCode] = useState<string>('');
+  const [newEmail, setNewEmail] = useState<string>('');
+  const [emailTimer, setEmailTimer] = useState<number>(60);
+  const [isEmailLoading, setIsEmailLoading] = useState<boolean>(false);
+
+  // Timer countdown cho OTP
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (emailModalOpen && emailStep === 1 && emailTimer > 0) {
+      interval = setInterval(() => {
+        setEmailTimer((prev) => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [emailModalOpen, emailStep, emailTimer]);
+
+  const formatTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  };
 
   const formatAvatarUrl = (url: string | null | undefined): string => {
     if (!url) return '';
@@ -179,6 +207,116 @@ export const UserForm: React.FC<UserFormProps> = ({
     toast.success('Đã gỡ ảnh đại diện tạm thời! Bấm "Lưu" để cập nhật chính thức.');
   };
 
+  // Mở popup thay đổi email và gửi OTP
+  const handleOpenEmailModal = async () => {
+    if (!email) {
+      toast.error('Người dùng chưa có email hiện tại');
+      return;
+    }
+    setEmailModalOpen(true);
+    setEmailStep(1);
+    setOtpCode('');
+    setNewEmail('');
+    setEmailTimer(60);
+    setIsEmailLoading(true);
+
+    try {
+      const url = userId ? `/users/email/change/request?id=${userId}` : '/users/email/change/request';
+      const res = await api.post(url);
+      const devOtp = res.data?.data?.devOtp || res.data?.devOtp;
+      if (devOtp) {
+        toast.success(`Mã xác minh đã được gửi! (Dev: ${devOtp})`);
+      } else {
+        toast.success('Mã xác minh đã được gửi qua email cũ!');
+      }
+    } catch (err: unknown) {
+      const axiosError = err as AxiosError<{ message?: string }>;
+      toast.error(axiosError.response?.data?.message || 'Không thể gửi mã xác thực OTP');
+      setEmailModalOpen(false);
+    } finally {
+      setIsEmailLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (emailTimer > 0 || isEmailLoading) return;
+    setIsEmailLoading(true);
+    try {
+      const url = userId ? `/users/email/change/request?id=${userId}` : '/users/email/change/request';
+      const res = await api.post(url);
+      const devOtp = res.data?.data?.devOtp || res.data?.devOtp;
+      if (devOtp) {
+        toast.success(`Đã gửi lại mã OTP! (Dev: ${devOtp})`);
+      } else {
+        toast.success('Đã gửi lại mã xác minh qua email cũ!');
+      }
+      setEmailTimer(60);
+    } catch (err: unknown) {
+      const axiosError = err as AxiosError<{ message?: string }>;
+      toast.error(axiosError.response?.data?.message || 'Gửi lại mã OTP thất bại');
+    } finally {
+      setIsEmailLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otpCode.trim() || otpCode.trim().length !== 6) {
+      toast.error('Vui lòng nhập đúng mã OTP gồm 6 chữ số');
+      return;
+    }
+    setIsEmailLoading(true);
+    try {
+      const url = userId ? `/users/email/change/verify-otp?id=${userId}` : '/users/email/change/verify-otp';
+      await api.post(url, { otp: otpCode.trim() });
+      toast.success('Mã xác thực hợp lệ! Vui lòng nhập email mới.');
+      setEmailStep(2);
+    } catch (err: unknown) {
+      const axiosError = err as AxiosError<{ message?: string }>;
+      toast.error(axiosError.response?.data?.message || 'Mã OTP không chính xác hoặc đã hết hạn');
+    } finally {
+      setIsEmailLoading(false);
+    }
+  };
+
+  const handleSaveNewEmail = async () => {
+    const cleanEmail = newEmail.trim().toLowerCase();
+    if (!cleanEmail) {
+      toast.error('Vui lòng nhập email mới');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      toast.error('Email mới không đúng định dạng');
+      return;
+    }
+    if (cleanEmail === email.toLowerCase()) {
+      toast.error('Email mới phải khác email hiện tại');
+      return;
+    }
+
+    setIsEmailLoading(true);
+    try {
+      const url = userId ? `/users/email/change?id=${userId}` : '/users/email/change';
+      await api.patch(url, { newEmail: cleanEmail });
+      toast.success('Đổi email thành công!');
+      setEmail(cleanEmail);
+      setEmailModalOpen(false);
+      setOtpCode('');
+      setNewEmail('');
+    } catch (err: unknown) {
+      const axiosError = err as AxiosError<{ message?: string }>;
+      toast.error(axiosError.response?.data?.message || 'Đổi email thất bại');
+    } finally {
+      setIsEmailLoading(false);
+    }
+  };
+
+  const handleCloseEmailModal = () => {
+    setEmailModalOpen(false);
+    setOtpCode('');
+    setNewEmail('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -192,8 +330,9 @@ export const UserForm: React.FC<UserFormProps> = ({
         toast.error('Vui lòng nhập tên tài khoản (username)');
         return;
       }
-      if (!password || password.length < 6) {
-        toast.error('Mật khẩu phải có ít nhất 6 ký tự');
+      // Không ràng buộc điều kiện mật khẩu phức tạp
+      if (!password.trim()) {
+        toast.error('Vui lòng nhập mật khẩu');
         return;
       }
       if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -418,7 +557,7 @@ export const UserForm: React.FC<UserFormProps> = ({
                 
                 {/* Hàng 1 */}
                 <div className="relative mt-2">
-                  <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10.5px] font-semibold text-gray-400 scale-95 origin-left z-10 select-none">
+                  <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10 select-none">
                     Tên đăng nhập(*)
                   </label>
                   <input
@@ -427,17 +566,18 @@ export const UserForm: React.FC<UserFormProps> = ({
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Nhập tên đăng nhập"
-                    className={`w-full px-3 py-2 border rounded-md text-xs focus:outline-none ${
+                    className={`w-full h-10 px-3 border rounded-lg text-xs focus:outline-none transition-colors ${
                       !isModeCreate
-                        ? 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed'
-                        : 'border-gray-200 text-gray-800 focus:border-blue-500 bg-white'
+                        ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
+                        : 'border-gray-300 text-gray-800 focus:border-blue-500 bg-white'
                     }`}
                   />
                 </div>
 
                 {isModeCreate ? (
+                  /* Mật khẩu khi tạo mới: đề xuất sẵn 12345678, người dùng có thể bấm vào sửa tùy ý */
                   <div className="relative mt-2">
-                    <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10.5px] font-semibold text-gray-400 scale-95 origin-left z-10 select-none">
+                    <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10 select-none">
                       Mật khẩu *
                     </label>
                     <div className="relative">
@@ -446,7 +586,7 @@ export const UserForm: React.FC<UserFormProps> = ({
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Nhập mật khẩu (tối thiểu 6 ký tự)"
-                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white pr-9"
+                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white pr-9 transition-colors"
                       />
                       <button
                         type="button"
@@ -467,8 +607,9 @@ export const UserForm: React.FC<UserFormProps> = ({
                     </div>
                   </div>
                 ) : (
+                  /* Ở chế độ chỉnh sửa: Hàng 1 cột phải là Họ và tên */
                   <div className="relative mt-2">
-                    <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10.5px] font-semibold text-gray-400 scale-95 origin-left z-10 select-none">
+                    <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10 select-none">
                       Họ và tên(*)
                     </label>
                     <input
@@ -476,7 +617,7 @@ export const UserForm: React.FC<UserFormProps> = ({
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       placeholder="Nhập họ và tên"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white"
+                      className="w-full h-10 px-3 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white transition-colors"
                     />
                   </div>
                 )}
@@ -484,7 +625,7 @@ export const UserForm: React.FC<UserFormProps> = ({
                 {/* Hàng 2 */}
                 {isModeCreate ? (
                   <div className="relative mt-2">
-                    <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10.5px] font-semibold text-gray-400 scale-95 origin-left z-10 select-none">
+                    <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10 select-none">
                       Họ và tên(*)
                     </label>
                     <input
@@ -492,32 +633,32 @@ export const UserForm: React.FC<UserFormProps> = ({
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       placeholder="Nhập họ và tên"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white"
+                      className="w-full h-10 px-3 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white transition-colors"
                     />
                   </div>
                 ) : null}
 
                 <div className="relative mt-2">
-                  <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10.5px] font-semibold text-gray-400 scale-95 origin-left z-10 select-none">
+                  <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10 select-none">
                     Ngày tháng năm sinh
                   </label>
                   <input
                     type="date"
                     value={dateOfBirth}
                     onChange={(e) => setDateOfBirth(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white cursor-pointer"
+                    className="w-full h-10 px-3 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white cursor-pointer transition-colors"
                   />
                 </div>
 
                 {!isModeCreate ? (
                   <div className="relative mt-2">
-                    <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10.5px] font-semibold text-gray-400 scale-95 origin-left z-10 select-none">
+                    <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10 select-none">
                       Giới tính
                     </label>
                     <select
                       value={gender}
                       onChange={(e) => setGender(e.target.value as 'male' | 'female')}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs text-gray-700 bg-white focus:outline-none focus:border-blue-500 cursor-pointer"
+                      className="w-full h-10 px-3 border border-gray-300 rounded-lg text-xs text-gray-700 bg-white focus:outline-none focus:border-blue-500 cursor-pointer transition-colors"
                     >
                       <option value="male">Nam</option>
                       <option value="female">Nữ</option>
@@ -528,13 +669,13 @@ export const UserForm: React.FC<UserFormProps> = ({
                 {/* Hàng 3 */}
                 {isModeCreate ? (
                   <div className="relative mt-2">
-                    <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10.5px] font-semibold text-gray-400 scale-95 origin-left z-10 select-none">
+                    <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10 select-none">
                       Giới tính
                     </label>
                     <select
                       value={gender}
                       onChange={(e) => setGender(e.target.value as 'male' | 'female')}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs text-gray-700 bg-white focus:outline-none focus:border-blue-500 cursor-pointer"
+                      className="w-full h-10 px-3 border border-gray-300 rounded-lg text-xs text-gray-700 bg-white focus:outline-none focus:border-blue-500 cursor-pointer transition-colors"
                     >
                       <option value="male">Nam</option>
                       <option value="female">Nữ</option>
@@ -543,7 +684,7 @@ export const UserForm: React.FC<UserFormProps> = ({
                 ) : null}
 
                 <div className="relative mt-2">
-                  <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10.5px] font-semibold text-gray-400 scale-95 origin-left z-10 select-none">
+                  <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10 select-none">
                     Chức danh
                   </label>
                   <input
@@ -551,47 +692,79 @@ export const UserForm: React.FC<UserFormProps> = ({
                     value={position}
                     onChange={(e) => setPosition(e.target.value)}
                     placeholder="Nhập chức danh"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white"
+                    className="w-full h-10 px-3 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white transition-colors"
                   />
                 </div>
+
+                {!isModeCreate ? (
+                  <div className="relative mt-2">
+                    <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10 select-none">
+                      Vai trò *
+                    </label>
+                    <select
+                      value={role}
+                      onChange={(e) => setRole(e.target.value as 'ADMIN' | 'DOANH_NGHIEP')}
+                      className="w-full h-10 px-3 border border-gray-300 rounded-lg text-xs text-gray-700 bg-white focus:outline-none focus:border-blue-500 cursor-pointer font-medium transition-colors"
+                    >
+                      <option value="ADMIN">Quản trị viên</option>
+                      <option value="DOANH_NGHIEP">Doanh nghiệp</option>
+                    </select>
+                  </div>
+                ) : null}
 
                 {/* Hàng 4 */}
-                <div className="relative mt-2">
-                  <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10.5px] font-semibold text-gray-400 scale-95 origin-left z-10 select-none">
-                    Vai trò *
-                  </label>
-                  <select
-                    value={role}
-                    onChange={(e) => setRole(e.target.value as 'ADMIN' | 'DOANH_NGHIEP')}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs text-gray-700 bg-white focus:outline-none focus:border-blue-500 cursor-pointer font-medium"
-                  >
-                    <option value="ADMIN">Quản trị viên</option>
-                    <option value="DOANH_NGHIEP">Doanh nghiệp</option>
-                  </select>
-                </div>
+                {isModeCreate ? (
+                  <div className="relative mt-2">
+                    <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10 select-none">
+                      Vai trò *
+                    </label>
+                    <select
+                      value={role}
+                      onChange={(e) => setRole(e.target.value as 'ADMIN' | 'DOANH_NGHIEP')}
+                      className="w-full h-10 px-3 border border-gray-300 rounded-lg text-xs text-gray-700 bg-white focus:outline-none focus:border-blue-500 cursor-pointer font-medium transition-colors"
+                    >
+                      <option value="ADMIN">Quản trị viên</option>
+                      <option value="DOANH_NGHIEP">Doanh nghiệp</option>
+                    </select>
+                  </div>
+                ) : null}
 
-                <div className={`relative mt-2 ${!isModeCreate ? 'md:col-span-2' : ''}`}>
-                  <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10.5px] font-semibold text-gray-400 scale-95 origin-left z-10 select-none">
-                    Email *
-                  </label>
-                  <input
-                    type="email"
-                    disabled={!isModeCreate}
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="email@example.com"
-                    className={`w-full px-3 py-2 border rounded-md text-xs focus:outline-none ${
-                      !isModeCreate
-                        ? 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed'
-                        : 'border-gray-200 text-gray-800 focus:border-blue-500 bg-white'
-                    }`}
-                  />
-                  {!isModeCreate && (
-                    <span className="text-[10px] text-gray-400 mt-1 block">
-                      (Email chỉ có thể đổi qua quy trình xác thực mã OTP tại màn hình cá nhân)
-                    </span>
-                  )}
-                </div>
+                {isModeCreate ? (
+                  <div className="relative mt-2">
+                    <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10 select-none">
+                      Email *
+                    </label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="email@example.com"
+                      className="w-full h-10 px-3 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white transition-colors"
+                    />
+                  </div>
+                ) : (
+                  /* Ở chế độ chỉnh sửa: Email có nút "Thay đổi" mở Popup OTP */
+                  <div className="relative mt-2 flex items-center gap-2.5">
+                    <div className="relative flex-1">
+                      <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10 select-none">
+                        Email
+                      </label>
+                      <input
+                        type="email"
+                        disabled
+                        value={email}
+                        className="w-full h-10 px-3 border border-gray-200 rounded-lg text-xs text-gray-600 bg-gray-50 cursor-not-allowed font-medium"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleOpenEmailModal}
+                      className="h-10 px-3.5 text-xs font-semibold text-[#2F6BFF] hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-blue-200 flex items-center justify-center flex-shrink-0"
+                    >
+                      Thay đổi
+                    </button>
+                  </div>
+                )}
 
               </div>
             </div>
@@ -608,6 +781,7 @@ export const UserForm: React.FC<UserFormProps> = ({
                     Tỉnh / thành phố
                   </label>
                   <SearchableSelect
+                    size="md"
                     options={provinces.map((p) => ({ value: String(p.id), label: p.name }))}
                     value={selectedProvinceId}
                     onChange={handleProvinceChange}
@@ -620,6 +794,7 @@ export const UserForm: React.FC<UserFormProps> = ({
                     Phường xã (Quận / Huyện)
                   </label>
                   <SearchableSelect
+                    size="md"
                     options={wards.map((w) => ({ value: String(w.id), label: w.name }))}
                     value={selectedWardId}
                     onChange={(wId) => setSelectedWardId(wId)}
@@ -629,7 +804,7 @@ export const UserForm: React.FC<UserFormProps> = ({
                 </div>
 
                 <div className="md:col-span-2 relative mt-2">
-                  <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10.5px] font-semibold text-gray-400 scale-95 origin-left z-10 select-none">
+                  <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10 select-none">
                     Địa chỉ
                   </label>
                   <input
@@ -637,7 +812,7 @@ export const UserForm: React.FC<UserFormProps> = ({
                     value={streetAddress}
                     onChange={(e) => setStreetAddress(e.target.value)}
                     placeholder="Nhập địa chỉ chi tiết"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white"
+                    className="w-full h-10 px-3 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white transition-colors"
                   />
                 </div>
               </div>
@@ -646,6 +821,117 @@ export const UserForm: React.FC<UserFormProps> = ({
           </div>
         </form>
       </div>
+
+      {/* POPUP THAY ĐỔI EMAIL THEO FIGMA */}
+      {emailModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-2xs p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-7 relative">
+            <h3 className="text-lg font-bold text-[#2F6BFF] text-center mb-3 tracking-wide uppercase">
+              THAY ĐỔI EMAIL
+            </h3>
+
+            {emailStep === 1 ? (
+              /* Bước 1: Nhập OTP xác thực */
+              <div>
+                <p className="text-xs text-gray-600 text-center mb-1">
+                  Chúng tôi đã gửi mã xác minh qua số email cũ
+                </p>
+                <p className="text-xs font-bold text-gray-800 text-center mb-1">
+                  {email}
+                </p>
+                <p className="text-xs text-gray-600 text-center mb-5">
+                  Bạn vui lòng kiểm tra và điền mã xác thực
+                </p>
+
+                <div className="relative mb-3">
+                  <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10">
+                    OTP <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="122456"
+                    maxLength={6}
+                    className="w-full h-11 px-3 border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:border-blue-500 text-center tracking-widest font-semibold"
+                  />
+                </div>
+
+                <div className="text-center text-xs font-semibold text-[#2F6BFF] mb-1">
+                  {formatTimer(emailTimer)}
+                </div>
+                <div className="text-center text-xs text-gray-500 mb-6">
+                  Chưa nhận được mã?{' '}
+                  <button
+                    type="button"
+                    disabled={emailTimer > 0 || isEmailLoading}
+                    onClick={handleResendOtp}
+                    className={`font-semibold ${
+                      emailTimer > 0 || isEmailLoading
+                        ? 'text-gray-400 cursor-not-allowed'
+                        : 'text-[#2F6BFF] hover:underline cursor-pointer'
+                    }`}
+                  >
+                    Gửi lại
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleVerifyOtp}
+                  disabled={isEmailLoading || otpCode.length !== 6}
+                  className="w-full py-2.5 bg-[#2F6BFF] hover:bg-blue-600 text-white font-semibold rounded-lg shadow-sm transition-colors text-xs mb-3 cursor-pointer disabled:bg-blue-300"
+                >
+                  {isEmailLoading ? 'Đang xác thực...' : 'Xác nhận'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCloseEmailModal}
+                  className="w-full text-center text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
+                >
+                  Hủy bỏ
+                </button>
+              </div>
+            ) : (
+              /* Bước 2: Nhập email mới */
+              <div>
+                <p className="text-xs text-gray-600 text-center mb-5">
+                  Vui lòng nhập email mới
+                </p>
+
+                <div className="relative mb-5">
+                  <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10">
+                    Email <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="email@example.com"
+                    className="w-full h-11 px-3 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSaveNewEmail}
+                  disabled={isEmailLoading || !newEmail.trim()}
+                  className="w-full py-2.5 bg-[#2F6BFF] hover:bg-blue-600 text-white font-semibold rounded-lg shadow-sm transition-colors text-xs mb-3 cursor-pointer disabled:bg-blue-300"
+                >
+                  {isEmailLoading ? 'Đang lưu...' : 'Lưu'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCloseEmailModal}
+                  className="w-full text-center text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
+                >
+                  Hủy bỏ
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
