@@ -121,6 +121,11 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
   const [gtkProgress, setGtkProgress] = useState<number>(0);
 
   const [previewData, setPreviewData] = useState<Record<string, string | null>>({});
+  const [showCreatedAccountModal, setShowCreatedAccountModal] = useState<boolean>(false);
+  const [createdAccountInfo, setCreatedAccountInfo] = useState<{ username: string; password: string }>({
+    username: '',
+    password: '12345678',
+  });
 
   const gpkdInputRef = useRef<HTMLInputElement>(null);
   const gtkInputRef = useRef<HTMLInputElement>(null);
@@ -462,11 +467,11 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
     try {
       await api.post('/business', payload);
       toast.success('Tạo doanh nghiệp thành công!');
-      if (onSuccess) {
-        onSuccess({ username: data.tax_code.trim() });
-      } else {
-        router.push('/dashboard/companies');
-      }
+      setCreatedAccountInfo({
+        username: data.tax_code.trim(),
+        password: '12345678',
+      });
+      setShowCreatedAccountModal(true);
     } catch (err: unknown) {
       const axiosError = err as AxiosError<{ message?: string | string[] }>;
       const msg = axiosError.response?.data?.message;
@@ -566,6 +571,53 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
       />
     </>
   );
+
+  const handleCloseCreatedAccountModal = () => {
+    setShowCreatedAccountModal(false);
+    if (onSuccess) {
+      onSuccess({ username: createdAccountInfo.username, password: createdAccountInfo.password });
+    }
+    handleClose();
+  };
+
+  const renderCreatedAccountModal = () => {
+    if (!showCreatedAccountModal) return null;
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[420px] overflow-hidden animate-in fade-in zoom-in duration-150">
+          {/* Header */}
+          <div className="bg-[#2F6BFF] py-3.5 px-6 text-center">
+            <h3 className="text-white font-bold text-lg">Thông tin tài khoản</h3>
+          </div>
+
+          {/* Body */}
+          <div className="px-8 py-6">
+            <div className="space-y-4 text-[15px] text-gray-900">
+              <div className="flex items-center gap-1.5">
+                <span>• Tài khoản:</span>
+                <span className="font-bold">{createdAccountInfo.username}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span>• Mật khẩu:</span>
+                <span className="font-bold">{createdAccountInfo.password}</span>
+              </div>
+            </div>
+
+            <div className="flex justify-end mt-8">
+              <button
+                type="button"
+                onClick={handleCloseCreatedAccountModal}
+                className="text-[#2F6BFF] hover:text-blue-700 font-semibold text-sm cursor-pointer transition-colors"
+              >
+                Huỷ bỏ
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   // STEP 2: XÁC NHẬN ĐĂNG KÝ
   if (step === 2) {
@@ -744,6 +796,8 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
             </button>
           </div>
         </div>
+
+        {renderCreatedAccountModal()}
       </div>
     );
   }
@@ -1223,6 +1277,8 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
           </button>
         </div>
       </div>
+
+      {renderCreatedAccountModal()}
     </form>
   );
 };

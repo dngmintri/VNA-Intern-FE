@@ -1362,89 +1362,29 @@ export const CompanyList = () => {
 
 
       {showAccountModal && generatedAccount && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
-          <div className="bg-white rounded-2xl w-full max-w-[400px] shadow-2xl overflow-hidden animate-fadeIn text-gray-700">
-            <div className="bg-[#2F6BFF] text-white text-center py-4 font-bold text-sm uppercase tracking-wider">
-              Tài khoản doanh nghiệp mới
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100] p-4 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-xl w-full max-w-[420px] shadow-2xl overflow-hidden animate-scaleUp">
+            <div className="bg-[#2F6BFF] text-white py-3.5 px-6 font-bold text-center text-sm md:text-base tracking-wide select-none">
+              Thông tin tài khoản
             </div>
-
-            <div className="p-6 space-y-5 text-center">
-              <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center mx-auto border border-emerald-100 mb-2">
-                <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                </svg>
-              </div>
-
-              <div className="space-y-1">
-                <h3 className="text-sm font-bold text-gray-900">Tạo doanh nghiệp thành công!</h3>
-                <p className="text-[11px] text-gray-400 leading-normal">
-                  Vui lòng lưu lại thông tin tài khoản đăng nhập dưới đây để bàn giao cho doanh nghiệp.
-                </p>
-              </div>
-
-              <div className="space-y-4 text-left">
-                <div>
-                  <span className="text-[10.5px] font-semibold text-gray-400 block mb-1">Tên đăng nhập (Mã số thuế)</span>
-                  <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden focus-within:border-blue-500 transition-colors">
-                    <input 
-                      type="text" 
-                      readOnly 
-                      value={generatedAccount.username} 
-                      className="w-full px-3 py-2 text-xs font-bold text-gray-800 bg-transparent focus:outline-none select-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard.writeText(generatedAccount.username);
-                        toast.success('Đã sao chép tên đăng nhập!');
-                      }}
-                      className="px-3 py-2 text-blue-600 hover:bg-gray-200/50 border-l border-gray-200 cursor-pointer flex items-center justify-center transition-colors"
-                      title="Sao chép tên đăng nhập"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                      </svg>
-                    </button>
-                  </div>
+            <div className="p-6 space-y-4 text-xs md:text-sm text-gray-800">
+              <div className="space-y-3 font-normal text-sm leading-relaxed">
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-900 font-bold">•</span>
+                  <span>Tài khoản: <strong className="font-bold text-gray-950">{generatedAccount.username}</strong></span>
                 </div>
-
-                <div>
-                  <span className="text-[10.5px] font-semibold text-gray-400 block mb-1">Mật khẩu mặc định</span>
-                  <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden focus-within:border-blue-500 transition-colors">
-                    <input 
-                      type="text" 
-                      readOnly 
-                      value={generatedAccount.password || '12345678'} 
-                      className="w-full px-3 py-2 text-xs font-bold text-gray-800 bg-transparent focus:outline-none select-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (generatedAccount.password) {
-                          navigator.clipboard.writeText(generatedAccount.password);
-                          toast.success('Đã sao chép mật khẩu!');
-                        }
-                      }}
-                      className="px-3 py-2 text-blue-600 hover:bg-gray-200/50 border-l border-gray-200 cursor-pointer flex items-center justify-center transition-colors"
-                      title="Sao chép mật khẩu"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                      </svg>
-                    </button>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-900 font-bold">•</span>
+                  <span>Mật khẩu: <strong className="font-bold text-gray-950">{generatedAccount.password || '12345678'}</strong></span>
                 </div>
               </div>
-
-              <div className="pt-2">
+              <div className="flex items-center justify-end pt-3">
                 <button
                   type="button"
                   onClick={() => setShowAccountModal(false)}
-                  className="w-full py-2.5 bg-[#2F6BFF] hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-sm transition-colors cursor-pointer"
+                  className="text-[#2F6BFF] hover:underline font-semibold text-xs md:text-sm transition-colors cursor-pointer"
                 >
-                  Hoàn tất
+                  Huỷ bỏ
                 </button>
               </div>
             </div>
