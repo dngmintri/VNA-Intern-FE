@@ -110,12 +110,12 @@ export const UserList = ({ onViewDeleted }: UserListProps) => {
       return;
     }
     try {
-      if (!user.accountId || !user.roleId) {
-        toast.error('Thiếu thông tin tài khoản hoặc vai trò');
+      if (!user.id) {
+        toast.error('Thiếu thông tin tài khoản');
         return;
       }
 
-      await api.patch(`/user/${user.accountId}`, {
+      await api.patch(`/users/profile/${user.id}`, {
         roleId: user.roleId,
         isActive: newStatus,
         email: user.email,

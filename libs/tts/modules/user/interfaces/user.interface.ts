@@ -4,6 +4,7 @@ export interface UserItem {
   fullName: string;
   username: string;
   email: string;
+  avatar?: string | null;
   role?: string;
   roleId?: number;
   position?: string;
@@ -22,6 +23,7 @@ export interface BackendUserItem {
   username: string;
   email: string;
   fullName: string;
+  avatar?: string | null;
   gender?: 'male' | 'female';
   dateOfBirth?: string | null;
   province?: string | null;
@@ -30,7 +32,7 @@ export interface BackendUserItem {
   createdAt?: string;
   updatedAt?: string;
   accountId?: number;
-  role?: { id: number; name: string };
+  role?: { id: number; name: string } | string;
   position?: string;
   isActive?: boolean;
 }
@@ -57,6 +59,7 @@ export interface UserPreviewItem {
   fullName: string;
   username: string;
   email: string;
+  avatar?: string | null;
   role: string;
   position: string;
   isActive: boolean;
@@ -75,6 +78,10 @@ export interface CreateUserInput {
   password: string;
   email: string;
   fullName: string;
+  avatar?: string | null;
+  position?: string | null;
+  isActive?: boolean;
+  role?: string;
   gender?: 'male' | 'female';
   dateOfBirth?: string | null;
   province?: string | null;
@@ -84,10 +91,13 @@ export interface CreateUserInput {
 
 export interface UpdateUserInput {
   fullName?: string;
+  avatar?: string | null;
+  position?: string | null;
+  isActive?: boolean;
+  role?: string;
   gender?: 'male' | 'female';
   dateOfBirth?: string | null;
   province?: string | null;
   district?: string | null;
   streetAddress?: string | null;
 }
-

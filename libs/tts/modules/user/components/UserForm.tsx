@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import toast from 'react-hot-toast';
 import { AxiosError } from 'axios';
 import { api } from '@/libs/core/api/axios';
@@ -32,22 +33,43 @@ export const UserForm: React.FC<UserFormProps> = ({
   onCancel,
 }) => {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isFetchingData, setIsFetchingData] = useState<boolean>(!isModeCreate);
 
+  // Form states
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const [fullName, setFullName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
+  const [position, setPosition] = useState<string>('');
   const [gender, setGender] = useState<'male' | 'female'>('male');
   const [role, setRole] = useState<'ADMIN' | 'DOANH_NGHIEP'>('DOANH_NGHIEP');
   const [dateOfBirth, setDateOfBirth] = useState<string>('');
+  const [isActive, setIsActive] = useState<boolean>(true);
   const [streetAddress, setStreetAddress] = useState<string>('');
 
+  // Avatar states
+  const [avatarUrl, setAvatarUrl] = useState<string>('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imgError, setImgError] = useState<boolean>(false);
+
+  // Address dropdowns
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [wards, setWards] = useState<Ward[]>([]);
   const [selectedProvinceId, setSelectedProvinceId] = useState<string>('');
   const [selectedWardId, setSelectedWardId] = useState<string>('');
+
+  const formatAvatarUrl = (url: string | null | undefined): string => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:')) {
+      return url;
+    }
+    const backendBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
 
   // 1. Tải danh sách tỉnh/thành phố
   useEffect(() => {
@@ -74,12 +96,20 @@ export const UserForm: React.FC<UserFormProps> = ({
             setUsername(userData.username || '');
             setFullName(userData.fullName || '');
             setEmail(userData.email || '');
+            setPosition(userData.position || '');
             setGender(userData.gender === 'female' ? 'female' : 'male');
             if (userData.role === 'ADMIN' || userData.role === 'DOANH_NGHIEP') {
               setRole(userData.role);
             }
+            if (userData.isActive !== undefined) {
+              setIsActive(userData.isActive);
+            }
             setDateOfBirth(userData.dateOfBirth ? userData.dateOfBirth.split('T')[0] : '');
             setStreetAddress(userData.streetAddress || '');
+
+            if (userData.avatar) {
+              setAvatarUrl(formatAvatarUrl(userData.avatar));
+            }
 
             if (userData.province && provinces.length > 0) {
               const matchedProv = provinces.find((p) => p.name === userData.province);
@@ -124,6 +154,31 @@ export const UserForm: React.FC<UserFormProps> = ({
     }
   };
 
+  const handleTriggerUpload = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Kích thước ảnh tối đa là 5MB');
+        return;
+      }
+      setSelectedFile(file);
+      const previewUrl = URL.createObjectURL(file);
+      setAvatarUrl(previewUrl);
+      setImgError(false);
+    }
+  };
+
+  const handleRemoveAvatar = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedFile(null);
+    setAvatarUrl('');
+    toast.success('Đã gỡ ảnh đại diện tạm thời! Bấm "Lưu" để cập nhật chính thức.');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -152,13 +207,47 @@ export const UserForm: React.FC<UserFormProps> = ({
 
     setIsLoading(true);
     try {
+      let avatarToSave = avatarUrl;
+
+      // Upload file ảnh nếu người dùng chọn ảnh mới
+      if (selectedFile) {
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        if (!isModeCreate && userId) {
+          formData.append('userId', userId);
+        }
+        const uploadRes = await api.post('/users/avatar', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        const uploadData = uploadRes.data?.data || uploadRes.data;
+        if (uploadData?.avatar) {
+          avatarToSave = uploadData.avatar;
+        }
+        setSelectedFile(null);
+      } else if (!avatarUrl) {
+        avatarToSave = '';
+      }
+
+      const relativeAvatar = avatarToSave
+        ? avatarToSave.replace(/^https?:\/\/[^/]+/, '')
+        : null;
+
+      const cleanAvatar = relativeAvatar && !relativeAvatar.startsWith('blob:') && !relativeAvatar.startsWith('data:')
+        ? relativeAvatar
+        : null;
+
       if (isModeCreate) {
         const payload = {
           username: username.trim(),
           password,
           email: email.trim().toLowerCase(),
           fullName: fullName.trim(),
+          position: position.trim() || null,
           role,
+          isActive,
+          avatar: cleanAvatar,
           gender,
           dateOfBirth: dateOfBirth || null,
           province: selectedProv ? selectedProv.name : null,
@@ -171,7 +260,10 @@ export const UserForm: React.FC<UserFormProps> = ({
       } else {
         const payload = {
           fullName: fullName.trim(),
+          position: position.trim() || null,
           role,
+          isActive,
+          avatar: cleanAvatar,
           gender,
           dateOfBirth: dateOfBirth || null,
           province: selectedProv ? selectedProv.name : null,
@@ -209,29 +301,17 @@ export const UserForm: React.FC<UserFormProps> = ({
 
   return (
     <div className="flex-1 flex flex-col bg-[#F4F6F9] min-h-screen font-sans">
-      {/* Header bar */}
-      <div className="bg-white px-6 py-3 flex items-center justify-between border-b border-gray-200 shadow-sm flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-gray-400">Hệ thống</span>
-          <span className="text-xs text-gray-400">❯</span>
-          <button
-            type="button"
-            onClick={() => router.push('/dashboard/users')}
-            className="text-xs font-semibold text-gray-500 hover:text-blue-600 transition-colors cursor-pointer"
-          >
-            Quản lý người dùng
-          </button>
-          <span className="text-xs text-gray-400">❯</span>
-          <h1 className="text-sm font-bold text-gray-800">
-            {isModeCreate ? 'Thêm mới người dùng' : 'Chỉnh sửa người dùng'}
-          </h1>
-        </div>
+      {/* Header bar chuẩn Figma */}
+      <div className="bg-white px-6 py-3.5 flex items-center justify-between border-b border-gray-200 shadow-2xs flex-shrink-0">
+        <h1 className="text-sm font-bold text-gray-800">
+          Chi tiết người dùng
+        </h1>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => (onCancel ? onCancel() : router.push('/dashboard/users'))}
-            className="px-4 py-1.5 border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer"
+            className="text-gray-500 hover:text-gray-800 text-xs font-semibold px-2 py-1.5 transition-colors cursor-pointer"
           >
             Hủy bỏ
           </button>
@@ -239,178 +319,330 @@ export const UserForm: React.FC<UserFormProps> = ({
             type="button"
             onClick={handleSubmit}
             disabled={isLoading}
-            className="px-4 py-1.5 bg-[#2F6BFF] hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer flex items-center gap-1.5"
+            className="px-4 py-1.5 bg-[#2F6BFF] hover:bg-blue-700 disabled:opacity-50 text-white rounded-md text-xs font-semibold shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
           >
-            {isLoading ? 'Đang lưu...' : isModeCreate ? 'Tạo tài khoản' : 'Lưu thay đổi'}
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+            </svg>
+            {isLoading ? 'Đang lưu...' : 'Lưu'}
           </button>
         </div>
       </div>
 
-      {/* Form Content */}
-      <div className="p-6 max-w-4xl">
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-6">
-          <div>
-            <h2 className="text-sm font-bold text-gray-900 border-b border-gray-100 pb-2 mb-4">
-              {isModeCreate ? 'Thông tin tài khoản mới' : 'Thông tin người dùng'}
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Tên tài khoản (Username) <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  disabled={!isModeCreate}
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Nhập username"
-                  className={`w-full px-3 py-2 border rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500 ${
-                    !isModeCreate ? 'bg-gray-100 cursor-not-allowed text-gray-500' : 'bg-white'
-                  }`}
-                />
-              </div>
-
-              {isModeCreate && (
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Mật khẩu khởi tạo <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Tối thiểu 6 ký tự"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white"
+      {/* Form Content 2 cột chuẩn Figma */}
+      <div className="p-6 max-w-6xl w-full mx-auto">
+        <form onSubmit={handleSubmit} className="w-full grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          
+          {/* CỘT TRÁI: Avatar & Kích hoạt */}
+          <div className="lg:col-span-3 bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col items-center">
+            <div 
+              className="w-32 h-32 border border-dashed border-gray-300 rounded-full flex flex-col items-center justify-center bg-gray-50/50 group relative overflow-hidden select-none"
+            >
+              {avatarUrl && !imgError ? (
+                <>
+                  <Image
+                    src={avatarUrl}
+                    alt="Ảnh đại diện"
+                    fill
+                    sizes="128px"
+                    className="object-cover"
+                    unoptimized
+                    onError={() => setImgError(true)}
                   />
+                  <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <button
+                      type="button"
+                      onClick={handleTriggerUpload}
+                      className="text-[10px] text-white bg-blue-600/80 hover:bg-blue-600 px-2.5 py-1 rounded font-medium transition-colors cursor-pointer w-[75px] text-center"
+                    >
+                      Thay đổi
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRemoveAvatar}
+                      className="text-[10px] text-white bg-red-600/80 hover:bg-red-600 px-2.5 py-1 rounded font-medium transition-colors cursor-pointer w-[75px] text-center"
+                    >
+                      Xóa ảnh
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div 
+                  onClick={handleTriggerUpload}
+                  className="w-full h-full flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100/70 transition-colors"
+                >
+                  <svg className="w-6 h-6 text-gray-400 mb-1.5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  <span className="text-[11px] text-gray-500 font-medium text-center px-2">Tải ảnh đại diện</span>
                 </div>
               )}
+            </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Địa chỉ Email <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  disabled={!isModeCreate}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="email@example.com"
-                  className={`w-full px-3 py-2 border rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500 ${
-                    !isModeCreate ? 'bg-gray-100 cursor-not-allowed text-gray-500' : 'bg-white'
-                  }`}
-                />
-                {!isModeCreate && (
-                  <span className="text-[10px] text-gray-400 mt-0.5 block">
-                    (Email chỉ có thể đổi qua quy trình xác thực mã OTP tại màn hình cá nhân)
-                  </span>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileChange} 
+              accept="image/*" 
+              className="hidden" 
+            />
+            <p className="text-[10.5px] text-gray-400 text-center mt-3.5 leading-relaxed">
+              *.jpeg, *.jpg, *.png. <br /> Kích thước tối đa 5 MB
+            </p>
+
+            <div className="w-full border-t border-gray-100 mt-6 pt-4 flex items-center justify-between">
+              <span className="text-xs font-semibold text-gray-700">Kích hoạt</span>
+              <button
+                type="button"
+                onClick={() => setIsActive(!isActive)}
+                className={`w-10 h-5 flex items-center rounded-full p-0.5 cursor-pointer transition-colors duration-200 ${
+                  isActive ? 'bg-[#2F6BFF] justify-end' : 'bg-gray-300 justify-start'
+                }`}
+              >
+                <span className="bg-white w-4 h-4 rounded-full shadow-xs" />
+              </button>
+            </div>
+          </div>
+
+          {/* CỘT PHẢI: Toàn bộ thông tin cá nhân & thông tin liên hệ */}
+          <div className="lg:col-span-9 bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6">
+            
+            {/* PHẦN 1: Thông tin cá nhân */}
+            <div>
+              <h3 className="text-xs font-bold text-gray-800 mb-4 tracking-wide uppercase">
+                Thông tin cá nhân
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4 text-xs">
+                
+                {/* Hàng 1 */}
+                <div className="relative mt-2">
+                  <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10.5px] font-semibold text-gray-400 scale-95 origin-left z-10 select-none">
+                    Tên đăng nhập(*)
+                  </label>
+                  <input
+                    type="text"
+                    disabled={!isModeCreate}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Nhập tên đăng nhập"
+                    className={`w-full px-3 py-2 border rounded-md text-xs focus:outline-none ${
+                      !isModeCreate
+                        ? 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'border-gray-200 text-gray-800 focus:border-blue-500 bg-white'
+                    }`}
+                  />
+                </div>
+
+                {isModeCreate ? (
+                  <div className="relative mt-2">
+                    <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10.5px] font-semibold text-gray-400 scale-95 origin-left z-10 select-none">
+                      Mật khẩu *
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Nhập mật khẩu (tối thiểu 6 ký tự)"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white pr-9"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                      >
+                        {showPassword ? (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                          </svg>
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative mt-2">
+                    <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10.5px] font-semibold text-gray-400 scale-95 origin-left z-10 select-none">
+                      Họ và tên(*)
+                    </label>
+                    <input
+                      type="text"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Nhập họ và tên"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white"
+                    />
+                  </div>
                 )}
-              </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Họ và tên <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Nguyễn Văn A"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white"
-                />
-              </div>
+                {/* Hàng 2 */}
+                {isModeCreate ? (
+                  <div className="relative mt-2">
+                    <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10.5px] font-semibold text-gray-400 scale-95 origin-left z-10 select-none">
+                      Họ và tên(*)
+                    </label>
+                    <input
+                      type="text"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Nhập họ và tên"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white"
+                    />
+                  </div>
+                ) : null}
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Giới tính</label>
-                <select
-                  value={gender}
-                  onChange={(e) => setGender(e.target.value as 'male' | 'female')}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-700 bg-white focus:outline-none focus:border-blue-500 cursor-pointer"
-                >
-                  <option value="male">Nam</option>
-                  <option value="female">Nữ</option>
-                </select>
-              </div>
+                <div className="relative mt-2">
+                  <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10.5px] font-semibold text-gray-400 scale-95 origin-left z-10 select-none">
+                    Ngày tháng năm sinh
+                  </label>
+                  <input
+                    type="date"
+                    value={dateOfBirth}
+                    onChange={(e) => setDateOfBirth(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white cursor-pointer"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Ngày sinh</label>
-                <input
-                  type="date"
-                  value={dateOfBirth}
-                  onChange={(e) => setDateOfBirth(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white cursor-pointer"
-                />
-              </div>
+                {!isModeCreate ? (
+                  <div className="relative mt-2">
+                    <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10.5px] font-semibold text-gray-400 scale-95 origin-left z-10 select-none">
+                      Giới tính
+                    </label>
+                    <select
+                      value={gender}
+                      onChange={(e) => setGender(e.target.value as 'male' | 'female')}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs text-gray-700 bg-white focus:outline-none focus:border-blue-500 cursor-pointer"
+                    >
+                      <option value="male">Nam</option>
+                      <option value="female">Nữ</option>
+                    </select>
+                  </div>
+                ) : null}
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Vai trò (Quyền hạn) <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as 'ADMIN' | 'DOANH_NGHIEP')}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-700 bg-white focus:outline-none focus:border-blue-500 cursor-pointer font-medium"
-                >
-                  <option value="DOANH_NGHIEP">Doanh nghiệp</option>
-                  <option value="ADMIN">Quản trị viên (Admin)</option>
-                </select>
+                {/* Hàng 3 */}
+                {isModeCreate ? (
+                  <div className="relative mt-2">
+                    <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10.5px] font-semibold text-gray-400 scale-95 origin-left z-10 select-none">
+                      Giới tính
+                    </label>
+                    <select
+                      value={gender}
+                      onChange={(e) => setGender(e.target.value as 'male' | 'female')}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs text-gray-700 bg-white focus:outline-none focus:border-blue-500 cursor-pointer"
+                    >
+                      <option value="male">Nam</option>
+                      <option value="female">Nữ</option>
+                    </select>
+                  </div>
+                ) : null}
+
+                <div className="relative mt-2">
+                  <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10.5px] font-semibold text-gray-400 scale-95 origin-left z-10 select-none">
+                    Chức danh
+                  </label>
+                  <input
+                    type="text"
+                    value={position}
+                    onChange={(e) => setPosition(e.target.value)}
+                    placeholder="Nhập chức danh"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white"
+                  />
+                </div>
+
+                {/* Hàng 4 */}
+                <div className="relative mt-2">
+                  <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10.5px] font-semibold text-gray-400 scale-95 origin-left z-10 select-none">
+                    Vai trò *
+                  </label>
+                  <select
+                    value={role}
+                    onChange={(e) => setRole(e.target.value as 'ADMIN' | 'DOANH_NGHIEP')}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs text-gray-700 bg-white focus:outline-none focus:border-blue-500 cursor-pointer font-medium"
+                  >
+                    <option value="ADMIN">Quản trị viên</option>
+                    <option value="DOANH_NGHIEP">Doanh nghiệp</option>
+                  </select>
+                </div>
+
+                <div className={`relative mt-2 ${!isModeCreate ? 'md:col-span-2' : ''}`}>
+                  <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10.5px] font-semibold text-gray-400 scale-95 origin-left z-10 select-none">
+                    Email *
+                  </label>
+                  <input
+                    type="email"
+                    disabled={!isModeCreate}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="email@example.com"
+                    className={`w-full px-3 py-2 border rounded-md text-xs focus:outline-none ${
+                      !isModeCreate
+                        ? 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'border-gray-200 text-gray-800 focus:border-blue-500 bg-white'
+                    }`}
+                  />
+                  {!isModeCreate && (
+                    <span className="text-[10px] text-gray-400 mt-1 block">
+                      (Email chỉ có thể đổi qua quy trình xác thực mã OTP tại màn hình cá nhân)
+                    </span>
+                  )}
+                </div>
+
               </div>
             </div>
-          </div>
 
-          <div>
-            <h2 className="text-sm font-bold text-gray-900 border-b border-gray-100 pb-2 mb-4">
-              Địa chỉ liên hệ
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Tỉnh / Thành phố</label>
-                <SearchableSelect
-                  options={provinces.map((p) => ({ value: String(p.id), label: p.name }))}
-                  value={selectedProvinceId}
-                  onChange={handleProvinceChange}
-                  placeholder="Chọn tỉnh / thành phố"
-                />
-              </div>
+            {/* PHẦN 2: Thông tin liên hệ */}
+            <div className="pt-2">
+              <h3 className="text-xs font-bold text-gray-800 mb-4 tracking-wide uppercase">
+                Thông tin liên hệ
+              </h3>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Quận / Huyện / Phường / Xã</label>
-                <SearchableSelect
-                  options={wards.map((w) => ({ value: String(w.id), label: w.name }))}
-                  value={selectedWardId}
-                  onChange={(wId) => setSelectedWardId(wId)}
-                  placeholder="Chọn quận / huyện / xã"
-                  disabled={!selectedProvinceId}
-                />
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4 text-xs">
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-500 mb-1">
+                    Tỉnh / thành phố
+                  </label>
+                  <SearchableSelect
+                    options={provinces.map((p) => ({ value: String(p.id), label: p.name }))}
+                    value={selectedProvinceId}
+                    onChange={handleProvinceChange}
+                    placeholder="Chọn tỉnh / thành phố"
+                  />
+                </div>
 
-              <div className="md:col-span-2">
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Địa chỉ chi tiết (Số nhà, đường...)</label>
-                <input
-                  type="text"
-                  value={streetAddress}
-                  onChange={(e) => setStreetAddress(e.target.value)}
-                  placeholder="Ví dụ: 123 Đường Nguyễn Huệ"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white"
-                />
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-500 mb-1">
+                    Phường xã (Quận / Huyện)
+                  </label>
+                  <SearchableSelect
+                    options={wards.map((w) => ({ value: String(w.id), label: w.name }))}
+                    value={selectedWardId}
+                    onChange={(wId) => setSelectedWardId(wId)}
+                    placeholder="Chọn phường / xã"
+                    disabled={!selectedProvinceId}
+                  />
+                </div>
+
+                <div className="md:col-span-2 relative mt-2">
+                  <label className="absolute -top-2 left-2.5 bg-white px-1 text-[10.5px] font-semibold text-gray-400 scale-95 origin-left z-10 select-none">
+                    Địa chỉ
+                  </label>
+                  <input
+                    type="text"
+                    value={streetAddress}
+                    onChange={(e) => setStreetAddress(e.target.value)}
+                    placeholder="Nhập địa chỉ chi tiết"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white"
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="flex justify-end gap-2.5 pt-4 border-t border-gray-100">
-            <button
-              type="button"
-              onClick={() => (onCancel ? onCancel() : router.push('/dashboard/users'))}
-              className="px-4 py-2 border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
-            >
-              Hủy
-            </button>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="px-5 py-2 bg-[#2F6BFF] hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer flex items-center gap-1.5"
-            >
-              {isLoading ? 'Đang lưu...' : isModeCreate ? 'Tạo mới người dùng' : 'Lưu thông tin'}
-            </button>
           </div>
         </form>
       </div>
