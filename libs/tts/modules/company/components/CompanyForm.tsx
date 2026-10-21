@@ -183,7 +183,7 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
         const [provRes, btRes, biRes] = await Promise.all([
           api.get<Province[]>('/location/provinces'),
           api.get<{ data?: BusinessType[] } & BusinessType[]>('/business-types/all'),
-          api.get<{ data?: BusinessIndustry[] } & BusinessIndustry[]>('/business-industries/roots'),
+          api.get<{ data?: BusinessIndustry[] } & BusinessIndustry[]>('/business-industries/level/4?isActive=true'),
         ]);
 
         setProvinces(provRes.data || []);

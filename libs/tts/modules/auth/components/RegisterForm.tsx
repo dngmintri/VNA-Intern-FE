@@ -119,7 +119,7 @@ export const RegisterForm = () => {
         const [provRes, btRes, biRes] = await Promise.all([
           api.get<Province[]>('/location/provinces'),
           api.get<{ data?: FilterItem[] } & FilterItem[]>('/business-types/all'),
-          api.get<{ data?: FilterItem[] } & FilterItem[]>('/business-industries/roots'),
+          api.get<{ data?: FilterItem[] } & FilterItem[]>('/business-industries/level/4?isActive=true'),
         ]);
         setProvinces(provRes.data || []);
         setBusinessTypes(btRes.data?.data || btRes.data || []);
