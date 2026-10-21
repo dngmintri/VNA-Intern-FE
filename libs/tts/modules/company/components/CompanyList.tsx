@@ -182,7 +182,7 @@ export const CompanyList = () => {
     try {
       const [btRes, biRes] = await Promise.all([
         api.get<{ data?: FilterItem[] } & FilterItem[]>('/business-types/all'),
-        api.get<{ data?: FilterItem[] } & FilterItem[]>('/business-industries/roots'),
+        api.get<{ data?: FilterItem[] } & FilterItem[]>('/business-industries/level/4?isActive=true'),
       ]);
       setBusinessTypes(btRes.data?.data || btRes.data || []);
       setBusinessIndustries(biRes.data?.data || biRes.data || []);
