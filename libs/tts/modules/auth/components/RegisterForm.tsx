@@ -384,8 +384,12 @@ export const RegisterForm = () => {
                   <input
                     {...register('foreign_business_name')}
                     type="text"
+                    maxLength={255}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 text-gray-800"
                   />
+                  {errors.foreign_business_name && (
+                    <span className="text-[9.5px] text-red-500 mt-1 block font-semibold">{errors.foreign_business_name.message}</span>
+                  )}
                 </div>
 
                 <div id="field-license_issue_date" className="relative mt-1">

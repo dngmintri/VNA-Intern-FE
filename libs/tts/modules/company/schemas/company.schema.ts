@@ -58,6 +58,7 @@ export const companySchema = z.object({
   license_registration_adress: z.string().optional().or(z.literal('')),
   foreign_business_name: z
     .string()
+    .max(255, 'Tên doanh nghiệp bằng tiếng nước ngoài tối đa 255 ký tự')
     .optional()
     .refine(
       (val) => {
