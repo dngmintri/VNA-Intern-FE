@@ -984,8 +984,12 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
                 <input
                   {...register('foreign_business_name')}
                   type="text"
+                  maxLength={255}
                   className="w-full h-[42px] px-3 border border-gray-300 rounded-lg text-sm text-gray-800 focus:outline-none focus:border-blue-500 transition-colors"
                 />
+                {errors.foreign_business_name && (
+                  <span className="text-[11px] text-red-500 mt-1 block">{errors.foreign_business_name.message}</span>
+                )}
               </div>
 
               {/* Row 1, Col 2: Email * */}
