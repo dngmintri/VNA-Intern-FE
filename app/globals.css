@@ -150,3 +150,8 @@ textarea:disabled::placeholder {
     margin: 1.5cm 1.5cm 1.5cm 1.5cm;
   }
 }
+/* Ẩn con mắt xem mật khẩu mặc định của Microsoft Edge / IE */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none !important;
+}
