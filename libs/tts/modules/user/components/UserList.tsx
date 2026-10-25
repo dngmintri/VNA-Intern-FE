@@ -277,16 +277,15 @@ const handlePreviewExcel = async (e: React.MouseEvent) => {
     }
   };
 const handleSingleDelete = async () => {
-    if (!userToDelete || !userToDelete.accountId) return;
+    const targetId = userToDelete?.id || userToDelete?.accountId;
+    if (!userToDelete || !targetId) return;
     if (userToDelete.username === currentLoginUser) {
       toast.error('Không thể xóa tài khoản của chính mình');
       return;
     }
     setIsDeleting(true);
     try {
-      await api.patch('/user/delete', {
-        accountIds: [userToDelete.accountId]
-      });
+      await api.delete(`/users/${targetId}`);
       toast.success(`Đã xoá tài khoản cán bộ ${userToDelete.fullName} thành công!`);
       setUsers((prev) => prev.filter((u) => u.id !== userToDelete.id));
       setSelectedUserIds((prev) => prev.filter((id) => id !== userToDelete.id));
@@ -314,12 +313,16 @@ const handleBulkDelete = async (e: React.MouseEvent) => {
     setIsBatchDeleting(true);
     
     try {
-      const targetAccountIds = selectedUserIds
-        .map((id) => users.find((u) => u.id === id)?.accountId)
-        .filter((id): id is number => typeof id === 'number' && id > 0);
+      const targetIds = selectedUserIds
+        .map((id) => {
+          const u = users.find((item) => item.id === id);
+          return String(u?.id || id);
+        })
+        .filter((id) => Boolean(id));
 
-      await api.patch('/user/delete', { 
-        accountIds: targetAccountIds 
+      await api.patch('/users/delete', { 
+        ids: targetIds,
+        accountIds: targetIds,
       });
       
       toast.success(`Đã xoá thành công dữ liệu của ${selectedUserIds.length} cán bộ khỏi hệ thống`);
@@ -622,6 +625,22 @@ const handleBulkDelete = async (e: React.MouseEvent) => {
                             >
                               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isCurrentUser}
+                              onClick={() => {
+                                setUserToDelete(user);
+                                setShowDeleteModal(true);
+                              }}
+                              className={`p-1 transition-colors cursor-pointer ${
+                                isCurrentUser ? 'opacity-30 cursor-not-allowed text-gray-300' : 'text-gray-400 hover:text-red-600'
+                              }`}
+                              title={isCurrentUser ? 'Không thể xóa tài khoản của chính mình' : 'Xóa người dùng'}
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                               </svg>
                             </button>
                           </div>
