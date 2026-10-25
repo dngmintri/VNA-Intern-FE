@@ -686,9 +686,9 @@ export const ProfileForm = () => {
                   Thông tin liên hệ
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4 text-xs">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">
-                      Tỉnh / thành phố
+                  <div className="relative mt-2 z-30">
+                    <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10 select-none">
+                      Tỉnh/ thành phố
                     </label>
                     <SearchableSelect
                       size="md"
@@ -698,25 +698,25 @@ export const ProfileForm = () => {
                         setValue('provinceId', val);
                         handleProvinceChange(val);
                       }}
-                      placeholder="Chọn tỉnh / thành phố"
+                      placeholder="Chọn tỉnh/ thành phố"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 mb-1">
-                      Phường xã (Quận / Huyện)
+                  <div className="relative mt-2 z-20">
+                    <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10 select-none">
+                      Phường/ xã
                     </label>
                     <SearchableSelect
                       size="md"
                       options={wards.map((w) => ({ value: String(w.id), label: w.name }))}
                       value={selectedWardId || ''}
                       onChange={(val) => setValue('wardId', val)}
-                      placeholder="Chọn phường / xã"
+                      placeholder="Chọn phường/ xã"
                       disabled={!selectedProvinceId}
                     />
                   </div>
 
-                  <div className="relative mt-2">
+                  <div className="relative mt-2 md:col-span-2">
                     <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10 select-none">
                       Địa chỉ
                     </label>

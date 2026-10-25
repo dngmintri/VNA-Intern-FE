@@ -724,26 +724,7 @@ export const CompanyList = () => {
                 <tr className="bg-white border-b border-gray-100">
                   {hasPermission('DELETE_COMPANY') && <th className="py-2 px-3"></th>}
                   
-                  <th className="py-2 px-2 text-center">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSearchName('');
-                        setSearchTaxCode('');
-                        setSelectedWardId('');
-                        setSelectedBusinessType('');
-                        setSelectedBusinessIndustry('');
-                        setSelectedStatus('');
-                        toast.success('Đã xóa tất cả bộ lọc');
-                      }}
-                      className="p-1 text-gray-400 hover:text-blue-500 rounded hover:bg-gray-100 transition-colors cursor-pointer"
-                      title="Xóa tất cả bộ lọc"
-                    >
-                      <svg className="w-3.5 h-3.5 mx-auto" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                      </svg>
-                    </button>
-                  </th>
+                  <th className="py-2 px-2 text-center"></th>
                   
                   {/* Tên doanh nghiệp filter */}
                   <th className="py-2 px-3 font-normal">
