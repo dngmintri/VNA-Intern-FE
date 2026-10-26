@@ -252,8 +252,17 @@ export const CompanyProfileForm = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const allowedExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.doc', '.docx'];
+    const fileExt = '.' + file.name.split('.').pop()?.toLowerCase();
+    if (!allowedExtensions.includes(fileExt)) {
+      toast.error('Chỉ cho phép tải lên file hình ảnh (PNG, JPG, JPEG, WEBP) hoặc tài liệu Word (.DOC, .DOCX)!');
+      e.target.value = '';
+      return;
+    }
+
     if (file.size > 10 * 1024 * 1024) {
       toast.error('Kích thước tài liệu tối đa là 10MB');
+      e.target.value = '';
       return;
     }
 
@@ -771,7 +780,7 @@ export const CompanyProfileForm = () => {
                       type="file"
                       ref={fileInputGpkdRef}
                       onChange={(e) => handleUploadFile(e, 'gpkd')}
-                      accept=".pdf, image/*"
+                      accept="image/*,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                       className="hidden"
                     />
                     {businessLicenseFileUrlVal && (
@@ -816,7 +825,7 @@ export const CompanyProfileForm = () => {
                       type="file"
                       ref={fileInputGtkRef}
                       onChange={(e) => handleUploadFile(e, 'gtk')}
-                      accept=".pdf, image/*"
+                      accept="image/*,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                       className="hidden"
                     />
                     {otherDocumentFileUrlVal && (

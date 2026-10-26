@@ -308,6 +308,21 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Chỉ cho phép tải lên file hình ảnh và file Word
+    const allowedExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.doc', '.docx'];
+    const fileExt = '.' + file.name.split('.').pop()?.toLowerCase();
+    if (!allowedExtensions.includes(fileExt)) {
+      toast.error('Chỉ cho phép tải lên file hình ảnh (PNG, JPG, JPEG, WEBP) hoặc tài liệu Word (.DOC, .DOCX)!');
+      e.target.value = '';
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Dung lượng file vượt quá giới hạn cho phép (tối đa 10MB)!');
+      e.target.value = '';
+      return;
+    }
+
     const formData = new FormData();
     formData.append('file', file);
 
@@ -561,14 +576,14 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
         type="file"
         ref={gpkdInputRef}
         onChange={(e) => handleFileUpload(e, 'gpkd')}
-        accept="image/*,application/pdf"
+        accept="image/*,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         className="hidden"
       />
       <input
         type="file"
         ref={gtkInputRef}
         onChange={(e) => handleFileUpload(e, 'gtk')}
-        accept="image/*,application/pdf"
+        accept="image/*,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         className="hidden"
       />
     </>
@@ -1120,7 +1135,12 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
 
           {/* Phần 3: File đính kèm */}
           <div>
-            <h2 className="text-base font-bold text-gray-800 mb-3">File đính kèm</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-1">
+              <h2 className="text-base font-bold text-gray-800">File đính kèm</h2>
+              <span className="text-xs text-gray-500 font-medium">
+                (Chỉ hỗ trợ file hình ảnh hoặc Word .doc, .docx &mdash; Tối đa 10MB)
+              </span>
+            </div>
             <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
               <table className="w-full text-left border-collapse">
                 <thead>

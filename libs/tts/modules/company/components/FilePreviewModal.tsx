@@ -44,6 +44,11 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
     lowerUrl.endsWith('.webp') ||
     lowerUrl.endsWith('.svg') ||
     lowerUrl.endsWith('.gif');
+  const isWord =
+    lowerUrl.endsWith('.doc') ||
+    lowerUrl.endsWith('.docx') ||
+    lowerUrl.includes('.doc?') ||
+    lowerUrl.includes('.docx?');
 
   return (
     <div
@@ -57,10 +62,16 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
         {/* Header */}
         <div className="px-5 py-3.5 bg-gray-50/90 border-b border-gray-200 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5 min-w-0 pr-4">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+              isWord ? 'bg-blue-100 text-blue-700' : 'bg-blue-50 text-blue-600'
+            }`}>
               {isImage ? (
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                </svg>
+              ) : isWord ? (
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM6 20V4h7v5h5v11H6zm4.8-3.5h-1.5l-1.8-6h1.4l1.1 4.2 1.2-4.2h1.4l1.2 4.2 1.1-4.2h1.4l-1.8 6h-1.5l-1.3-4.5-1.3 4.5z" />
                 </svg>
               ) : (
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -72,25 +83,29 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
               <h3 className="text-sm font-bold text-gray-800 truncate" title={cleanName}>
                 {cleanName}
               </h3>
-              <p className="text-[11px] text-gray-500">Xem trước tài liệu đính kèm</p>
+              <p className="text-[11px] text-gray-500">
+                {isWord ? 'Tài liệu Microsoft Word' : isImage ? 'File hình ảnh' : 'Tài liệu đính kèm'}
+              </p>
             </div>
           </div>
 
           {/* Action buttons on header */}
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* Open in new tab */}
-            <a
-              href={fileUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer flex items-center gap-1 text-xs font-medium"
-              title="Mở toàn màn hình trong tab mới"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-              </svg>
-              <span className="hidden sm:inline">Mở tab mới</span>
-            </a>
+            {/* Open in new tab (if image or pdf) */}
+            {!isWord && (
+              <a
+                href={fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 text-gray-500 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer flex items-center gap-1 text-xs font-medium"
+                title="Mở toàn màn hình trong tab mới"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                </svg>
+                <span className="hidden sm:inline">Mở tab mới</span>
+              </a>
+            )}
 
             {/* Download */}
             <a
@@ -130,6 +145,31 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                 className="max-h-full max-w-full object-contain rounded-lg shadow-sm"
               />
             </div>
+          ) : isWord ? (
+            <div className="flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto space-y-4">
+              <div className="w-20 h-20 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center shadow-xs">
+                <svg className="w-10 h-10" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM6 20V4h7v5h5v11H6zm4.8-3.5h-1.5l-1.8-6h1.4l1.1 4.2 1.2-4.2h1.4l1.2 4.2 1.1-4.2h1.4l-1.8 6h-1.5l-1.3-4.5-1.3 4.5z" />
+                </svg>
+              </div>
+              <div>
+                <h4 className="text-base font-bold text-gray-800 break-all">{cleanName}</h4>
+                <p className="text-xs text-gray-500 mt-1">Tài liệu Microsoft Word (.doc / .docx)</p>
+              </div>
+              <p className="text-xs text-gray-500 leading-relaxed bg-white border border-gray-200 rounded-xl p-3 shadow-2xs">
+                Trình duyệt không hỗ trợ xem trực tiếp tài liệu Word. Vui lòng tải file về máy để xem nội dung đầy đủ bằng Microsoft Word hoặc WPS Office.
+              </p>
+              <a
+                href={fileUrl}
+                download={cleanName}
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-2 cursor-pointer"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+                Tải file về máy để xem
+              </a>
+            </div>
           ) : (
             <iframe
               src={fileUrl}
@@ -142,4 +182,3 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
     </div>
   );
 };
-
