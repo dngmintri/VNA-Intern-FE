@@ -13,7 +13,11 @@ export const companySchema = z.object({
     .min(1, 'Mã số thuế không được để trống')
     .regex(
       /^(\d{10}|\d{10}-\d{3})$/,
-      'Mã số thuế không hợp lệ, phải đủ 10 chữ số hoặc 13 chữ số. Vd: 1234567890 hoặc 1234567890-123'
+      'Mã số thuế không hợp lệ, phải gồm 10 chữ số hoặc 13 ký tự (Ví dụ: 0109876543 hoặc 0109876543-001)'
+    )
+    .refine(
+      (val) => !/^0{10}(-0{3})?$/.test(val),
+      { message: 'Mã số thuế không hợp lệ (không được chứa toàn số 0)' }
     ),
   business_type: z.string().min(1, 'Bắt buộc phải chọn loại hình kinh doanh'),
   business_industry: z.string().min(1, 'Bắt buộc phải chọn ngành nghề kinh doanh chính'),
@@ -58,6 +62,7 @@ export const companySchema = z.object({
   license_registration_adress: z.string().optional().or(z.literal('')),
   foreign_business_name: z
     .string()
+    .max(255, 'Tên doanh nghiệp bằng tiếng nước ngoài tối đa 255 ký tự')
     .optional()
     .refine(
       (val) => {
@@ -107,7 +112,7 @@ export const companySchema = z.object({
       { message: 'Số điện thoại người đại diện không hợp lệ (di động 10 số, bắt đầu bằng 03/05/07/08/09)' }
     )
     .or(z.literal('')),
-  business_license_file_url: z.string().min(1, 'Vui lòng tải lên giấy phép đăng ký kinh doanh'),
+  business_license_file_url: z.string().optional().nullable().or(z.literal('')),
   other_document_file_url: z.string().nullable().optional(),
 });
 

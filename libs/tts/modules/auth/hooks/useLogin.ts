@@ -42,7 +42,6 @@ export const useLogin = () => {
     setIsLoading(true);
     try {
       const res = await loginApi(data);
-      console.log(res);
 
       const accessToken = res.data?.accessToken || res.accessToken;
       const refreshToken = res.data?.refreshToken || res.refreshToken;
@@ -74,8 +73,9 @@ export const useLogin = () => {
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
         const backendMessage = (error.response?.data as Record<string, unknown>)?.message;
-        if (error.response?.status === 403 || String(backendMessage).includes('khóa') || String(backendMessage).toLowerCase().includes('active')) {
-          toast.error(Array.isArray(backendMessage) ? String(backendMessage[0]) : String(backendMessage || 'Tài khoản đã bị khóa!'));
+        if (backendMessage) {
+          const msg = Array.isArray(backendMessage) ? String(backendMessage[0]) : String(backendMessage);
+          toast.error(msg);
           return;
         }
       }

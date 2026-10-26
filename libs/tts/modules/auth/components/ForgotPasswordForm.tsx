@@ -13,9 +13,22 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const validateEmail = (value: string): string | null => {
   if (!value.trim()) return 'Vui lòng nhập email';
   if (!EMAIL_REGEX.test(value))
-    return 'Vui lòng nhập đúng định dạng email. Định dạng đúng ... @...';
+    return 'Vui lòng nhập đúng định dạng email, Định dạng đúng ... @...';
   return null;
 };
+
+const EyeIcon = () => (
+  <svg className="w-5 h-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+  </svg>
+);
+
+const EyeSlashIcon = () => (
+  <svg className="w-5 h-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+  </svg>
+);
 
 export const ForgotPasswordForm = () => {
   const router = useRouter();
@@ -28,7 +41,7 @@ export const ForgotPasswordForm = () => {
   const [otp, setOtp] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [timer, setTimer] = useState(300);
+  const [timer, setTimer] = useState(60);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -52,19 +65,25 @@ export const ForgotPasswordForm = () => {
     setIsLoading(true);
 
     try {
-      const res = await forgotPasswordApi({ email });
-      toast.success(res.message || 'Mã xác thực đã được gửi thành công!');
+      await forgotPasswordApi({ email });
+      toast.success('Gửi email thành công');
       setStep(2);
-      setTimer(300);
+      setTimer(60);
     } catch (err: unknown) {
-      const axiosError = err as AxiosError<{ message?: string }>;
-      let errMsg = axiosError.response?.data?.message || 'Không thể gửi yêu cầu quên mật khẩu';
-      
-      if (axiosError.response?.status === 404 || errMsg === 'Không tìm thấy người dùng với email này') {
-        errMsg = 'Email chưa đăng ký trong hệ thống. Vui lòng thử lại sau';
+      const axiosError = err as AxiosError<{ message?: string | string[] }>;
+      const msg = axiosError.response?.data?.message;
+      const rawMsg = Array.isArray(msg) ? msg[0] : msg || '';
+
+      if (
+        axiosError.response?.status === 404 ||
+        axiosError.response?.status === 400 ||
+        rawMsg.includes('không tồn tại') ||
+        rawMsg.includes('chưa đăng ký')
+      ) {
+        toast.error('Email chưa đăng ký trong hệ thống. Xin vui lòng thử lại sau');
+      } else {
+        toast.error(rawMsg || 'Không thể gửi yêu cầu quên mật khẩu');
       }
-      
-      toast.error(errMsg);
     } finally {
       setIsLoading(false);
     }
@@ -75,31 +94,6 @@ export const ForgotPasswordForm = () => {
 
     if (!newPassword.trim()) {
       toast.error('Vui lòng nhập mật khẩu mới');
-      return;
-    }
-    if (newPassword.length < 6) {
-      toast.error('Mật khẩu mới phải có ít nhất 6 ký tự');
-      return;
-    }
-
-
-    if (!/[A-Z]/.test(newPassword)) {
-      toast.error('Mật khẩu mới phải chứa ít nhất 1 chữ cái viết hoa (A-Z)');
-      return;
-    }
-
-    if (!/[a-z]/.test(newPassword)) {
-      toast.error('Mật khẩu mới phải chứa ít nhất 1 chữ cái viết thường (a-z)');
-      return;
-    }
-
-    if (!/[0-9]/.test(newPassword)) {
-      toast.error('Mật khẩu mới phải chứa ít nhất 1 chữ số (0-9)');
-      return;
-    }
-
-    if (!/[!@#$%^&*(),.?":{}|<>_]/.test(newPassword)) {
-      toast.error('Mật khẩu mới phải chứa ít nhất 1 ký tự đặc biệt (ví dụ: @, #, $, !, %, v.v.)');
       return;
     }
 
@@ -132,9 +126,8 @@ export const ForgotPasswordForm = () => {
       setNewPassword('');
       setConfirmPassword('');
       setOtp('');
-      
-      router.push('/login'); 
 
+      router.push('/login');
     } catch (err: unknown) {
       const axiosError = err as AxiosError<{ message?: string }>;
       const errMsg = axiosError.response?.data?.message || 'Khôi phục mật khẩu thất bại';
@@ -146,7 +139,6 @@ export const ForgotPasswordForm = () => {
 
   return (
     <div className="w-full max-w-[550px] p-8 bg-white rounded-xl shadow-sm border border-gray-100">
-
       <div className="flex justify-center mb-6">
         <div className="w-20 h-20 relative drop-shadow-md">
           <Image
@@ -178,8 +170,8 @@ export const ForgotPasswordForm = () => {
       {step === 1 ? (
         /* FORM BƯỚC 1: NHẬP EMAIL */
         <form onSubmit={handleEmailSubmit} className="space-y-4" noValidate>
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">
+          <div className="relative mt-2">
+            <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10 select-none">
               Email <span className="text-red-500">*</span>
             </label>
             <input
@@ -191,7 +183,7 @@ export const ForgotPasswordForm = () => {
               }}
               placeholder="example@gmail.com"
               autoComplete="email"
-              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 placeholder:text-gray-400 transition-all"
+              className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-sm text-gray-900 placeholder:text-gray-400 transition-all"
             />
           </div>
 
@@ -199,7 +191,7 @@ export const ForgotPasswordForm = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 bg-[#2F6BFF] hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors shadow-sm disabled:bg-blue-400 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-[#2F6BFF] hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors shadow-sm disabled:bg-blue-400 disabled:cursor-not-allowed cursor-pointer"
             >
               {isLoading ? 'Đang gửi...' : 'Gửi xác thực'}
             </button>
@@ -207,10 +199,10 @@ export const ForgotPasswordForm = () => {
         </form>
       ) : (
         /* FORM BƯỚC 2: NHẬP MẬT KHẨU MỚI & OTP */
-        <form onSubmit={handleResetPasswordSubmit} className="space-y-4" noValidate>
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">
-              Nhập mật khẩu mới *
+        <form onSubmit={handleResetPasswordSubmit} className="space-y-5" noValidate>
+          <div className="relative mt-2">
+            <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10 select-none">
+              Nhập mật khẩu mới <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <input
@@ -218,21 +210,21 @@ export const ForgotPasswordForm = () => {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="••••••••••••"
-                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 placeholder:text-gray-400 pr-10 transition-all"
+                className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-sm text-gray-900 placeholder:text-gray-400 pr-10 transition-all [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
               />
               <button
                 type="button"
                 onClick={() => setShowNewPassword(!showNewPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs font-medium"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5 transition-colors cursor-pointer"
               >
-                {showNewPassword ? 'Ẩn' : 'Hiện'}
+                {showNewPassword ? <EyeIcon /> : <EyeSlashIcon />}
               </button>
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">
-              Xác nhận mật khẩu mới *
+          <div className="relative mt-2">
+            <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10 select-none">
+              Xác nhận mật khẩu mới <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <input
@@ -240,32 +232,32 @@ export const ForgotPasswordForm = () => {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••••••"
-                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 placeholder:text-gray-400 pr-10 transition-all"
+                className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-sm text-gray-900 placeholder:text-gray-400 pr-10 transition-all [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs font-medium"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5 transition-colors cursor-pointer"
               >
-                {showConfirmPassword ? 'Ẩn' : 'Hiện'}
+                {showConfirmPassword ? <EyeIcon /> : <EyeSlashIcon />}
               </button>
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">
-              OTP *
+          <div className="relative mt-2">
+            <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10 select-none">
+              OTP <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={otp}
               onChange={(e) => setOtp(e.target.value)}
               placeholder="Nhập mã OTP"
-              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 placeholder:text-gray-400 transition-all"
+              className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-sm text-gray-900 placeholder:text-gray-400 transition-all"
             />
           </div>
 
-          <div className="text-center pt-2">
+          <div className="text-center pt-1">
             <div className="text-[#2F6BFF] font-bold text-sm tracking-wider">
               {String(Math.floor(timer / 60)).padStart(2, '0')}:{String(timer % 60).padStart(2, '0')}
             </div>
@@ -277,13 +269,14 @@ export const ForgotPasswordForm = () => {
                 onClick={async () => {
                   setIsLoading(true);
                   try {
-                    const res = await forgotPasswordApi({ email });
-                    toast.success(res.message || 'Đã gửi lại mã xác thực!');
-                    setTimer(300);
+                    await forgotPasswordApi({ email });
+                    toast.success('Gửi email thành công');
+                    setTimer(60);
                   } catch (err: unknown) {
-                    const axiosError = err as AxiosError<{ message?: string }>;
-                    const errMsg = axiosError.response?.data?.message || 'Gửi lại mã thất bại';
-                    toast.error(errMsg);
+                    const axiosError = err as AxiosError<{ message?: string | string[] }>;
+                    const msg = axiosError.response?.data?.message;
+                    const rawMsg = Array.isArray(msg) ? msg[0] : msg || '';
+                    toast.error(rawMsg || 'Gửi lại mã thất bại');
                   } finally {
                     setIsLoading(false);
                   }
@@ -291,7 +284,7 @@ export const ForgotPasswordForm = () => {
                 className={`font-semibold transition-colors ${
                   timer > 0 || isLoading
                     ? 'text-gray-400 cursor-not-allowed'
-                    : 'text-blue-600 hover:underline'
+                    : 'text-blue-600 hover:underline cursor-pointer'
                 }`}
               >
                 Gửi lại
@@ -303,7 +296,7 @@ export const ForgotPasswordForm = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 bg-[#2F6BFF] hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors shadow-sm disabled:bg-blue-400 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-[#2F6BFF] hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors shadow-sm disabled:bg-blue-400 disabled:cursor-not-allowed cursor-pointer"
             >
               {isLoading ? 'Đang xử lý...' : 'Khôi phục mật khẩu'}
             </button>
