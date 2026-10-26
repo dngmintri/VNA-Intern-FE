@@ -63,6 +63,9 @@ export const UserForm: React.FC<UserFormProps> = ({
   const [selectedProvinceId, setSelectedProvinceId] = useState<string>('');
   const [selectedWardId, setSelectedWardId] = useState<string>('');
 
+  // Validation errors
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
 
 
   const formatAvatarUrl = (url: string | null | undefined): string => {
@@ -198,73 +201,73 @@ export const UserForm: React.FC<UserFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const newErrors: Record<string, string> = {};
+
     const cleanFullName = fullName.trim();
     if (!cleanFullName) {
-      toast.error('Vui lòng nhập họ và tên');
-      return;
-    }
-    if (cleanFullName.length < 2 || cleanFullName.length > 100) {
-      toast.error('Họ và tên phải có độ dài từ 2 đến 100 ký tự');
-      return;
+      newErrors.fullName = 'Vui lòng nhập họ và tên';
+    } else if (cleanFullName.length < 2 || cleanFullName.length > 100) {
+      newErrors.fullName = 'Họ và tên phải có độ dài từ 2 đến 100 ký tự';
+    } else if (!/^[\p{L}\s]+$/u.test(cleanFullName)) {
+      newErrors.fullName = 'Họ và tên chỉ được chứa chữ cái, không chứa số hoặc ký tự đặc biệt';
     }
 
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail) {
-      toast.error('Vui lòng nhập email');
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(cleanEmail)) {
-      toast.error('Email không đúng định dạng (ví dụ: user@example.com)');
-      return;
-    }
-    if (cleanEmail.length > 255) {
-      toast.error('Email không được vượt quá 255 ký tự');
-      return;
+      newErrors.email = 'Vui lòng nhập email';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      newErrors.email = 'Email không đúng định dạng (ví dụ: user@example.com)';
+    } else if (cleanEmail.length > 255) {
+      newErrors.email = 'Email không được vượt quá 255 ký tự';
     }
 
     if (isModeCreate) {
       const cleanUsername = username.trim();
       if (!cleanUsername) {
-        toast.error('Vui lòng nhập tên đăng nhập');
-        return;
-      }
-      if (cleanUsername.length < 4 || cleanUsername.length > 30) {
-        toast.error('Tên đăng nhập phải có độ dài từ 4 đến 30 ký tự');
-        return;
-      }
-      if (!/^[a-zA-Z0-9_]+$/.test(cleanUsername)) {
-        toast.error('Tên đăng nhập chỉ được chứa chữ cái không dấu, số và dấu gạch dưới (_), không chứa khoảng trắng');
-        return;
+        newErrors.username = 'Vui lòng nhập tên đăng nhập';
+      } else if (cleanUsername.length < 4 || cleanUsername.length > 30) {
+        newErrors.username = 'Tên đăng nhập phải có độ dài từ 4 đến 30 ký tự';
+      } else if (!/^[a-zA-Z0-9_]+$/.test(cleanUsername)) {
+        newErrors.username = 'Tên đăng nhập chỉ được chứa chữ cái không dấu, số và dấu gạch dưới (_)';
       }
 
-      // Mật khẩu không ràng buộc phức tạp, chỉ kiểm tra không để trống
       if (!password.trim()) {
-        toast.error('Vui lòng nhập mật khẩu');
-        return;
+        newErrors.password = 'Vui lòng nhập mật khẩu';
       }
     }
 
-    // Ngày tháng năm sinh: chỉ cần không lớn hơn ngày hiện tại (<= today)
     if (dateOfBirth) {
       const inputDob = new Date(dateOfBirth);
       const today = new Date();
       today.setHours(23, 59, 59, 999);
       if (inputDob > today) {
-        toast.error('Ngày tháng năm sinh không được lớn hơn ngày hiện tại');
-        return;
+        newErrors.dateOfBirth = 'Ngày tháng năm sinh không được lớn hơn ngày hiện tại';
       }
     }
 
     if (position && position.trim().length > 100) {
-      toast.error('Chức danh không được vượt quá 100 ký tự');
-      return;
+      newErrors.position = 'Chức danh không được vượt quá 100 ký tự';
     }
 
     if (streetAddress && streetAddress.trim().length > 255) {
-      toast.error('Địa chỉ không được vượt quá 255 ký tự');
+      newErrors.streetAddress = 'Địa chỉ không được vượt quá 255 ký tự';
+    }
+
+    if (selectedProvinceId && !selectedWardId) {
+      newErrors.wardId = 'Vui lòng chọn phường/xã khi đã chọn tỉnh/thành phố';
+    }
+    if (!selectedProvinceId && selectedWardId) {
+      newErrors.provinceId = 'Vui lòng chọn tỉnh/thành phố';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      const firstError = Object.values(newErrors)[0];
+      toast.error(firstError);
       return;
     }
+
+    setErrors({});
 
     const selectedProv = provinces.find((p) => String(p.id) === String(selectedProvinceId));
     const selectedWard = wards.find((w) => String(w.id) === String(selectedWardId));
@@ -492,14 +495,22 @@ export const UserForm: React.FC<UserFormProps> = ({
                     type="text"
                     disabled={!isModeCreate}
                     value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    onChange={(e) => {
+                      setUsername(e.target.value);
+                      if (errors.username) setErrors((prev) => ({ ...prev, username: '' }));
+                    }}
                     placeholder="Nhập tên đăng nhập"
                     className={`w-full h-10 px-3 border rounded-lg text-xs focus:outline-none transition-colors ${
                       !isModeCreate
                         ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
+                        : errors.username
+                        ? 'border-red-500 text-gray-800 focus:border-red-500 bg-white'
                         : 'border-gray-300 text-gray-800 focus:border-blue-500 bg-white'
                     }`}
                   />
+                  {errors.username && (
+                    <span className="text-[11px] text-red-500 mt-1 block pl-1 font-medium">{errors.username}</span>
+                  )}
                 </div>
 
                 {isModeCreate ? (
@@ -512,9 +523,16 @@ export const UserForm: React.FC<UserFormProps> = ({
                       <input
                         type={showPassword ? 'text' : 'password'}
                         value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        onChange={(e) => {
+                          setPassword(e.target.value);
+                          if (errors.password) setErrors((prev) => ({ ...prev, password: '' }));
+                        }}
                         placeholder="Nhập mật khẩu (tối thiểu 6 ký tự)"
-                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white pr-9 transition-colors [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
+                        className={`w-full h-10 px-3 border rounded-lg text-xs text-gray-800 focus:outline-none bg-white pr-9 transition-colors [&::-ms-reveal]:hidden [&::-ms-clear]:hidden ${
+                          errors.password
+                            ? 'border-red-500 focus:border-red-500'
+                            : 'border-gray-300 focus:border-blue-500'
+                        }`}
                       />
                       <button
                         type="button"
@@ -533,6 +551,9 @@ export const UserForm: React.FC<UserFormProps> = ({
                         )}
                       </button>
                     </div>
+                    {errors.password && (
+                      <span className="text-[11px] text-red-500 mt-1 block pl-1 font-medium">{errors.password}</span>
+                    )}
                   </div>
                 ) : (
                   /* Ở chế độ chỉnh sửa: Hàng 1 cột phải là Họ và tên */
@@ -543,10 +564,20 @@ export const UserForm: React.FC<UserFormProps> = ({
                     <input
                       type="text"
                       value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
+                      onChange={(e) => {
+                        setFullName(e.target.value);
+                        if (errors.fullName) setErrors((prev) => ({ ...prev, fullName: '' }));
+                      }}
                       placeholder="Nhập họ và tên"
-                      className="w-full h-10 px-3 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white transition-colors"
+                      className={`w-full h-10 px-3 border rounded-lg text-xs text-gray-800 focus:outline-none bg-white transition-colors ${
+                        errors.fullName
+                          ? 'border-red-500 focus:border-red-500'
+                          : 'border-gray-300 focus:border-blue-500'
+                      }`}
                     />
+                    {errors.fullName && (
+                      <span className="text-[11px] text-red-500 mt-1 block pl-1 font-medium">{errors.fullName}</span>
+                    )}
                   </div>
                 )}
 
@@ -559,10 +590,20 @@ export const UserForm: React.FC<UserFormProps> = ({
                     <input
                       type="text"
                       value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
+                      onChange={(e) => {
+                        setFullName(e.target.value);
+                        if (errors.fullName) setErrors((prev) => ({ ...prev, fullName: '' }));
+                      }}
                       placeholder="Nhập họ và tên"
-                      className="w-full h-10 px-3 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white transition-colors"
+                      className={`w-full h-10 px-3 border rounded-lg text-xs text-gray-800 focus:outline-none bg-white transition-colors ${
+                        errors.fullName
+                          ? 'border-red-500 focus:border-red-500'
+                          : 'border-gray-300 focus:border-blue-500'
+                      }`}
                     />
+                    {errors.fullName && (
+                      <span className="text-[11px] text-red-500 mt-1 block pl-1 font-medium">{errors.fullName}</span>
+                    )}
                   </div>
                 ) : null}
 
@@ -574,9 +615,19 @@ export const UserForm: React.FC<UserFormProps> = ({
                     type="date"
                     max={new Date().toLocaleDateString('en-CA')}
                     value={dateOfBirth}
-                    onChange={(e) => setDateOfBirth(e.target.value)}
-                    className="w-full h-10 px-3 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white cursor-pointer transition-colors"
+                    onChange={(e) => {
+                      setDateOfBirth(e.target.value);
+                      if (errors.dateOfBirth) setErrors((prev) => ({ ...prev, dateOfBirth: '' }));
+                    }}
+                    className={`w-full h-10 px-3 border rounded-lg text-xs text-gray-800 focus:outline-none bg-white cursor-pointer transition-colors ${
+                      errors.dateOfBirth
+                        ? 'border-red-500 focus:border-red-500'
+                        : 'border-gray-300 focus:border-blue-500'
+                    }`}
                   />
+                  {errors.dateOfBirth && (
+                    <span className="text-[11px] text-red-500 mt-1 block pl-1 font-medium">{errors.dateOfBirth}</span>
+                  )}
                 </div>
 
                 {!isModeCreate ? (
@@ -619,10 +670,20 @@ export const UserForm: React.FC<UserFormProps> = ({
                   <input
                     type="text"
                     value={position}
-                    onChange={(e) => setPosition(e.target.value)}
+                    onChange={(e) => {
+                      setPosition(e.target.value);
+                      if (errors.position) setErrors((prev) => ({ ...prev, position: '' }));
+                    }}
                     placeholder="Nhập chức danh"
-                    className="w-full h-10 px-3 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white transition-colors"
+                    className={`w-full h-10 px-3 border rounded-lg text-xs text-gray-800 focus:outline-none bg-white transition-colors ${
+                      errors.position
+                        ? 'border-red-500 focus:border-red-500'
+                        : 'border-gray-300 focus:border-blue-500'
+                    }`}
                   />
+                  {errors.position && (
+                    <span className="text-[11px] text-red-500 mt-1 block pl-1 font-medium">{errors.position}</span>
+                  )}
                 </div>
 
                 {!isModeCreate ? (
@@ -665,11 +726,21 @@ export const UserForm: React.FC<UserFormProps> = ({
                   <input
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (errors.email) setErrors((prev) => ({ ...prev, email: '' }));
+                    }}
                     placeholder="email@example.com"
                     maxLength={255}
-                    className="w-full h-10 px-3 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white transition-colors"
+                    className={`w-full h-10 px-3 border rounded-lg text-xs text-gray-800 focus:outline-none bg-white transition-colors ${
+                      errors.email
+                        ? 'border-red-500 focus:border-red-500'
+                        : 'border-gray-300 focus:border-blue-500'
+                    }`}
                   />
+                  {errors.email && (
+                    <span className="text-[11px] text-red-500 mt-1 block pl-1 font-medium">{errors.email}</span>
+                  )}
                 </div>
 
               </div>
@@ -690,9 +761,16 @@ export const UserForm: React.FC<UserFormProps> = ({
                     size="md"
                     options={provinces.map((p) => ({ value: String(p.id), label: p.name }))}
                     value={selectedProvinceId}
-                    onChange={handleProvinceChange}
+                    onChange={(val) => {
+                      handleProvinceChange(val);
+                      if (errors.provinceId) setErrors((prev) => ({ ...prev, provinceId: '' }));
+                    }}
                     placeholder="Chọn tỉnh/ thành phố"
+                    error={errors.provinceId}
                   />
+                  {errors.provinceId && (
+                    <span className="text-[11px] text-red-500 mt-1 block pl-1 font-medium">{errors.provinceId}</span>
+                  )}
                 </div>
 
                 <div className="relative mt-2 z-20">
@@ -703,10 +781,17 @@ export const UserForm: React.FC<UserFormProps> = ({
                     size="md"
                     options={wards.map((w) => ({ value: String(w.id), label: w.name }))}
                     value={selectedWardId}
-                    onChange={(wId) => setSelectedWardId(wId)}
+                    onChange={(wId) => {
+                      setSelectedWardId(wId);
+                      if (errors.wardId) setErrors((prev) => ({ ...prev, wardId: '' }));
+                    }}
                     placeholder="Chọn phường/ xã"
                     disabled={!selectedProvinceId}
+                    error={errors.wardId}
                   />
+                  {errors.wardId && (
+                    <span className="text-[11px] text-red-500 mt-1 block pl-1 font-medium">{errors.wardId}</span>
+                  )}
                 </div>
 
                 <div className="relative mt-2 md:col-span-2">
@@ -716,10 +801,20 @@ export const UserForm: React.FC<UserFormProps> = ({
                   <input
                     type="text"
                     value={streetAddress}
-                    onChange={(e) => setStreetAddress(e.target.value)}
+                    onChange={(e) => {
+                      setStreetAddress(e.target.value);
+                      if (errors.streetAddress) setErrors((prev) => ({ ...prev, streetAddress: '' }));
+                    }}
                     placeholder="Địa chỉ"
-                    className="w-full h-10 px-3 border border-gray-300 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-blue-500 bg-white transition-colors"
+                    className={`w-full h-10 px-3 border rounded-lg text-xs text-gray-800 focus:outline-none bg-white transition-colors ${
+                      errors.streetAddress
+                        ? 'border-red-500 focus:border-red-500'
+                        : 'border-gray-300 focus:border-blue-500'
+                    }`}
                   />
+                  {errors.streetAddress && (
+                    <span className="text-[11px] text-red-500 mt-1 block pl-1 font-medium">{errors.streetAddress}</span>
+                  )}
                 </div>
               </div>
             </div>
