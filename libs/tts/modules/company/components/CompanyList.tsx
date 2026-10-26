@@ -31,6 +31,7 @@ import { api } from '@/libs/core/api/axios';
 import { AxiosError } from 'axios';
 import { Company, CompanyProfile } from '../interfaces/company.interface';
 import { SearchableSelect } from './SearchableSelect';
+import { FilePreviewModal } from './FilePreviewModal';
 import { useHasPermission } from '@/libs/shared/hooks/useHasPermission';
 
 interface Province {
@@ -117,6 +118,7 @@ export const CompanyList = () => {
 
   const [showDetailsModal, setShowDetailsModal] = useState<boolean>(false);
   const [detailsData, setDetailsData] = useState<CompanyProfile | null>(null);
+  const [previewModalFile, setPreviewModalFile] = useState<{ url: string; name: string } | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState<boolean>(false);
 
   const [showAccountModal, setShowAccountModal] = useState<boolean>(false);
@@ -159,8 +161,8 @@ export const CompanyList = () => {
         provinceHdkdId: b.operatingProvince,
         wardHdkdId: b.operatingDistrict,
         addressHdkd: b.businessLocation,
-        gpkdFilePath: null,
-        gtkFilePath: null,
+        gpkdFilePath: b.gpkdFilePath || null,
+        gtkFilePath: b.otherDocumentPath || null,
         createdAt: b.createdAt,
         updatedAt: b.updatedAt,
         status: b.isActive ? 'ACTIVE' : 'INACTIVE',
@@ -277,6 +279,16 @@ export const CompanyList = () => {
     }
   };
 
+  const getFileUrl = (filePath: string | null | undefined): string => {
+    if (!filePath || filePath === 'none') return '';
+    if (filePath.startsWith('http')) return filePath;
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    if (filePath.startsWith('/uploads/') || filePath.startsWith('uploads/')) {
+      return `${baseUrl}${filePath.startsWith('/') ? '' : '/'}${filePath}`;
+    }
+    return `${baseUrl}/uploads/documents/${filePath}`;
+  };
+
   const handleViewDetails = async (taxCode: string) => {
     setIsLoadingDetails(true);
     setShowDetailsModal(true);
@@ -309,8 +321,8 @@ export const CompanyList = () => {
           representativeName: b.representativeName,
           representativePhone: b.representativePhone,
           businessPhone: b.officePhone,
-          gpkdFile: null,
-          gtkFile: null,
+          gpkdFile: (b.gpkdFilePath && b.gpkdFilePath !== 'none') ? b.gpkdFilePath : (b.gpkdFile && b.gpkdFile !== 'none' ? b.gpkdFile : null),
+          gtkFile: (b.otherDocumentPath && b.otherDocumentPath !== 'none') ? b.otherDocumentPath : (b.gtkFile && b.gtkFile !== 'none' ? b.gtkFile : null),
         });
       }
     } catch (err) {
@@ -1579,36 +1591,50 @@ export const CompanyList = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="flex flex-col">
                           <span className="text-gray-400 font-medium mb-1">Giấy phép kinh doanh (file):</span>
-                          {detailsData.gpkdFile ? (
-                            <a
-                              href={detailsData.gpkdFile.startsWith('http') ? detailsData.gpkdFile : `http://localhost:8080/uploads/${detailsData.gpkdFile}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="font-semibold text-blue-600 hover:underline flex items-center gap-1 cursor-pointer bg-white border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50 hover:shadow-xs transition-all w-fit max-w-full"
+                          {detailsData.gpkdFile && detailsData.gpkdFile !== 'none' ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (detailsData.gpkdFile) {
+                                  setPreviewModalFile({
+                                    url: getFileUrl(detailsData.gpkdFile),
+                                    name: detailsData.gpkdFile.split('/').pop() || detailsData.gpkdFile,
+                                  });
+                                }
+                              }}
+                              className="font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1.5 cursor-pointer bg-white border border-gray-200 px-3 py-2 rounded-lg hover:bg-blue-50/50 hover:border-blue-200 hover:shadow-xs transition-all w-fit max-w-full text-left"
                             >
-                              <span className="truncate max-w-[200px]">{detailsData.gpkdFile}</span>
                               <svg className="w-3.5 h-3.5 inline flex-shrink-0 text-blue-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                               </svg>
-                            </a>
+                              <span className="truncate max-w-[200px]">{detailsData.gpkdFile.split('/').pop() || detailsData.gpkdFile}</span>
+                            </button>
                           ) : (
                             <span className="font-semibold text-gray-500">—</span>
                           )}
                         </div>
                         <div className="flex flex-col">
                           <span className="text-gray-400 font-medium mb-1">Tài liệu khác đính kèm:</span>
-                          {detailsData.gtkFile ? (
-                            <a
-                              href={detailsData.gtkFile.startsWith('http') ? detailsData.gtkFile : `http://localhost:8080/uploads/${detailsData.gtkFile}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="font-semibold text-blue-600 hover:underline flex items-center gap-1 cursor-pointer bg-white border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50 hover:shadow-xs transition-all w-fit max-w-full"
+                          {detailsData.gtkFile && detailsData.gtkFile !== 'none' ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (detailsData.gtkFile) {
+                                  setPreviewModalFile({
+                                    url: getFileUrl(detailsData.gtkFile),
+                                    name: detailsData.gtkFile.split('/').pop() || detailsData.gtkFile,
+                                  });
+                                }
+                              }}
+                              className="font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1.5 cursor-pointer bg-white border border-gray-200 px-3 py-2 rounded-lg hover:bg-blue-50/50 hover:border-blue-200 hover:shadow-xs transition-all w-fit max-w-full text-left"
                             >
-                              <span className="truncate max-w-[200px]">{detailsData.gtkFile}</span>
                               <svg className="w-3.5 h-3.5 inline flex-shrink-0 text-blue-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                               </svg>
-                            </a>
+                              <span className="truncate max-w-[200px]">{detailsData.gtkFile.split('/').pop() || detailsData.gtkFile}</span>
+                            </button>
                           ) : (
                             <span className="font-semibold text-gray-500">—</span>
                           )}
@@ -1695,6 +1721,13 @@ export const CompanyList = () => {
           </button>
         </div>
       )}
+
+      <FilePreviewModal
+        isOpen={!!previewModalFile}
+        onClose={() => setPreviewModalFile(null)}
+        fileUrl={previewModalFile?.url || null}
+        fileName={previewModalFile?.name}
+      />
 
     </div>
   );

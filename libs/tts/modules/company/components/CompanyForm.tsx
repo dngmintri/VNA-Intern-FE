@@ -10,6 +10,7 @@ import { api } from '@/libs/core/api/axios';
 import { companySchema, CompanyInput } from '../schemas/company.schema';
 import { BusinessType, BusinessIndustry } from '../interfaces/company.interface';
 import { SearchableSelect } from './SearchableSelect';
+import { FilePreviewModal } from './FilePreviewModal';
 
 const formatToBEDate = (dateStr: string | null | undefined): string | null => {
   if (!dateStr) return null;
@@ -121,6 +122,7 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
   const [gtkProgress, setGtkProgress] = useState<number>(0);
 
   const [previewData, setPreviewData] = useState<Record<string, string | null>>({});
+  const [previewModalFile, setPreviewModalFile] = useState<{ url: string; name: string } | null>(null);
   const [showCreatedAccountModal, setShowCreatedAccountModal] = useState<boolean>(false);
   const [createdAccountInfo, setCreatedAccountInfo] = useState<{ username: string; password: string }>({
     username: '',
@@ -722,7 +724,10 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
                           type="button"
                           onClick={() => {
                             if (previewData.gpkdFile && previewData.gpkdFile !== 'none') {
-                              window.open(getFileUrl(previewData.gpkdFile), '_blank');
+                              setPreviewModalFile({
+                                url: getFileUrl(previewData.gpkdFile),
+                                name: previewData.gpkdFile.split('/').pop() || previewData.gpkdFile,
+                              });
                             }
                           }}
                           disabled={!previewData.gpkdFile || previewData.gpkdFile === 'none'}
@@ -754,7 +759,10 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
                           type="button"
                           onClick={() => {
                             if (previewData.gtkFile) {
-                              window.open(getFileUrl(previewData.gtkFile), '_blank');
+                              setPreviewModalFile({
+                                url: getFileUrl(previewData.gtkFile),
+                                name: previewData.gtkFile.split('/').pop() || previewData.gtkFile,
+                              });
                             }
                           }}
                           disabled={!previewData.gtkFile}
@@ -798,6 +806,13 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
         </div>
 
         {renderCreatedAccountModal()}
+
+        <FilePreviewModal
+          isOpen={!!previewModalFile}
+          onClose={() => setPreviewModalFile(null)}
+          fileUrl={previewModalFile?.url || null}
+          fileName={previewModalFile?.name}
+        />
       </div>
     );
   }
@@ -1142,7 +1157,10 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
                           type="button"
                           onClick={() => {
                             if (gpkdFileVal && gpkdFileVal !== 'none') {
-                              window.open(getFileUrl(gpkdFileVal), '_blank');
+                              setPreviewModalFile({
+                                url: getFileUrl(gpkdFileVal),
+                                name: gpkdFileVal.split('/').pop() || gpkdFileVal,
+                              });
                             }
                           }}
                           disabled={!gpkdFileVal || gpkdFileVal === 'none'}
@@ -1209,7 +1227,10 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
                           type="button"
                           onClick={() => {
                             if (gtkFileVal) {
-                              window.open(getFileUrl(gtkFileVal), '_blank');
+                              setPreviewModalFile({
+                                url: getFileUrl(gtkFileVal),
+                                name: gtkFileVal.split('/').pop() || gtkFileVal,
+                              });
                             }
                           }}
                           disabled={!gtkFileVal}
@@ -1283,6 +1304,13 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
       </div>
 
       {renderCreatedAccountModal()}
+
+      <FilePreviewModal
+        isOpen={!!previewModalFile}
+        onClose={() => setPreviewModalFile(null)}
+        fileUrl={previewModalFile?.url || null}
+        fileName={previewModalFile?.name}
+      />
     </form>
   );
 };
