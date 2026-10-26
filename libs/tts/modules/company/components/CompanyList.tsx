@@ -99,9 +99,10 @@ export const CompanyList = () => {
 
   const [showResetModal, setShowResetModal] = useState<boolean>(false);
   const [selectedTaxCode, setSelectedTaxCode] = useState<string>('');
-  const [selectedCompanyName, setSelectedCompanyName] = useState<string>('');
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | number | null>(null);
   const [newPassword, setNewPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [pwdError, setPwdError] = useState<string>('');
   const [isResetting, setIsResetting] = useState<boolean>(false);
 
   const [showImportModal, setShowImportModal] = useState<boolean>(false);
@@ -389,10 +390,11 @@ export const CompanyList = () => {
   const paginatedCompanies = filteredCompanies.slice(startIndex, startIndex + pageSize);
   const totalPages = Math.max(1, Math.ceil(filteredCompanies.length / pageSize));
 
-  const handleOpenResetModal = (taxCode: string, companyName: string) => {
+  const handleOpenResetModal = (taxCode: string, id: string | number) => {
     setSelectedTaxCode(taxCode);
-    setSelectedCompanyName(companyName);
+    setSelectedCompanyId(id);
     setNewPassword('');
+    setPwdError('');
     setShowPassword(false);
     setShowResetModal(true);
   };
@@ -400,69 +402,33 @@ export const CompanyList = () => {
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!newPassword.trim()) {
-      toast.error('Vui lòng nhập mật khẩu mới');
+    if (!newPassword || !newPassword.trim()) {
+      setPwdError('Vui lòng nhập mật khẩu mới');
       return;
     }
 
-    if (newPassword.length < 8) {
-      toast.error('Mật khẩu phải từ 8 ký tự trở lên');
-      return;
-    }
-
-    const hasUpper = /[A-Z]/.test(newPassword);
-    const hasLower = /[a-z]/.test(newPassword);
-    const hasNumber = /[0-9]/.test(newPassword);
-    const hasSymbol = /[^A-Za-z0-9]/.test(newPassword);
-
-    if (!hasUpper || !hasLower || !hasNumber || !hasSymbol) {
-      toast.error('Mật khẩu phải gồm chữ hoa, chữ thường, số và ký tự đặc biệt');
-      return;
-    }
-
+    setPwdError('');
     setIsResetting(true);
 
     try {
-      const response = await api.post<{ message?: string }>('/company/reinitialize-password', {
-        tax_code: selectedTaxCode,
-        password: newPassword,
+      const targetId = selectedCompanyId || selectedTaxCode;
+      await api.patch(`/business/${targetId}/reset-password`, {
+        newPassword: newPassword.trim(),
       });
 
-      toast.success(response.data?.message || 'Khởi tạo lại mật khẩu thành công!');
+      toast.success(`Khởi tạo mật khẩu cho tài khoản ${selectedTaxCode} thành công!`);
       setShowResetModal(false);
-      
-      try {
-        await navigator.clipboard.writeText(newPassword);
-        toast.success('Đã sao chép mật khẩu mới vào clipboard');
-      } catch (clipErr) {
-      }
+      setNewPassword('');
+      setPwdError('');
+      setShowPassword(false);
     } catch (error: unknown) {
-      const axiosError = error as AxiosError<{ message?: string }>;
-      const msg = axiosError.response?.data?.message || 'Khởi tạo lại mật khẩu thất bại';
-      toast.error(msg);
+      const axiosError = error as AxiosError<{ message?: string | string[] }>;
+      const msg = axiosError.response?.data?.message;
+      const errorMsg = Array.isArray(msg) ? msg[0] : (msg || 'Khởi tạo mật khẩu thất bại');
+      setPwdError(errorMsg);
     } finally {
       setIsResetting(false);
     }
-  };
-
-  const handleGeneratePassword = () => {
-    const uppers = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const lowers = 'abcdefghijklmnopqrstuvwxyz';
-    const numbers = '0123456789';
-    const symbols = '!@#$%^&*()_+~`|}{[]:;?><,./-';
-    
-    let generated = '';
-    generated += uppers.charAt(Math.floor(Math.random() * uppers.length));
-    generated += lowers.charAt(Math.floor(Math.random() * lowers.length));
-    generated += numbers.charAt(Math.floor(Math.random() * numbers.length));
-    generated += symbols.charAt(Math.floor(Math.random() * symbols.length));
-
-    const allChars = uppers + lowers + numbers + symbols;
-    for (let i = 0; i < 6; i++) {
-      generated += allChars.charAt(Math.floor(Math.random() * allChars.length));
-    }
-    
-    setNewPassword(generated);
   };
 
   const handleOpenDeleteModal = (taxCode: string, companyName: string) => {
@@ -878,7 +844,7 @@ export const CompanyList = () => {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleOpenResetModal(company.taxCode, company.companyName);
+                                handleOpenResetModal(company.taxCode, company.id);
                               }}
                               className="text-gray-400 hover:text-blue-600 transition-colors cursor-pointer"
                               title="Khởi tạo lại mật khẩu"
@@ -992,77 +958,74 @@ export const CompanyList = () => {
       </div>
 
       {showResetModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
-          <div className="bg-white rounded-2xl w-full max-w-[440px] shadow-2xl overflow-hidden animate-fadeIn text-gray-700">
-            <div className="bg-[#2F6BFF] text-white text-center py-4 font-bold text-sm uppercase tracking-wider">
-              Khởi tạo mật khẩu mới
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100] p-4 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-lg w-full max-w-[400px] shadow-2xl overflow-hidden animate-scaleUp">
+            <div className="bg-[#2F6BFF] text-white px-5 py-2.5 font-bold text-center text-xs tracking-wide select-none">
+              Xác nhận
             </div>
-
-            <form onSubmit={handleResetPassword} className="p-6 space-y-5">
-              <div className="text-xs space-y-1 bg-blue-50/50 p-3 rounded-lg border border-blue-100 text-gray-600 leading-relaxed">
-                <div>Doanh nghiệp: <span className="font-bold text-gray-800">{selectedCompanyName}</span></div>
-                <div>Mã số thuế: <span className="font-semibold text-gray-800">{selectedTaxCode}</span></div>
+            <form onSubmit={handleResetPassword} className="p-5 space-y-4 text-xs">
+              <div className="text-gray-700 font-medium select-none">
+                Khởi tạo mật khẩu cho tài khoản <span className="font-bold text-gray-900">{selectedTaxCode}</span>
+              </div>
+              <div className="relative mt-1">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => {
+                    setNewPassword(e.target.value);
+                    if (pwdError) setPwdError('');
+                  }}
+                  placeholder="Nhập mật khẩu mới mong muốn"
+                  className="w-full px-3 py-2 pr-10 border border-gray-200 rounded-md focus:outline-none focus:border-blue-500 text-gray-800 placeholder-gray-400 text-xs shadow-inner"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 cursor-pointer"
+                >
+                  {showPassword ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  )}
+                </button>
               </div>
 
-              <div className="relative">
-                <label className="absolute -top-2 left-3 bg-white px-1 text-[10px] font-semibold text-gray-400 select-none z-10">
-                  Mật khẩu mới <span className="text-red-500">*</span>
-                </label>
-                <div className="relative flex items-center">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Nhập mật khẩu mới hoặc click tự tạo"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:border-blue-500 text-xs text-gray-900 placeholder-gray-300 pr-24"
-                  />
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-100 rounded transition-colors"
-                      title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-                    >
-                      {showPassword ? (
-                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                        </svg>
-                      ) : (
-                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleGeneratePassword}
-                      className="text-[#2F6BFF] hover:text-blue-700 text-[10px] font-bold bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded transition-colors"
-                    >
-                      Tự tạo
-                    </button>
-                  </div>
+              {pwdError && (
+                <div className="text-red-500 font-semibold bg-red-50 p-2 rounded border border-red-100 leading-relaxed text-[11px] animate-fadeIn">
+                  {pwdError}
                 </div>
-              </div>
-
-              <div className="text-[10px] text-gray-400 leading-relaxed">
-                Mật khẩu phải dài ít nhất 8 ký tự, bao gồm ít nhất 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt.
-              </div>
+              )}
 
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowResetModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-gray-500 hover:bg-gray-50 rounded-lg transition-colors"
+                  onClick={() => {
+                    setShowResetModal(false);
+                    setNewPassword('');
+                    setPwdError('');
+                  }}
+                  className="text-blue-600 hover:underline font-bold px-1 py-1.5 transition-colors cursor-pointer"
                 >
                   Huỷ bỏ
                 </button>
                 <button
                   type="submit"
                   disabled={isResetting}
-                  className="px-5 py-2 bg-[#2F6BFF] hover:bg-blue-700 text-white font-semibold text-xs rounded-lg shadow-sm transition-colors disabled:bg-blue-400"
+                  className="bg-[#2F6BFF] hover:bg-blue-700 text-white font-bold px-4 py-1.5 rounded flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer disabled:opacity-50"
                 >
-                  {isResetting ? 'Đang thực hiện...' : 'Khởi tạo'}
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V7l-4-4z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 21v-8H7v8" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 3v5h8" />
+                  </svg>
+                  {isResetting ? 'Đang lưu...' : 'Lưu'}
                 </button>
               </div>
             </form>
