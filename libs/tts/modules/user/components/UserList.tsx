@@ -924,28 +924,6 @@ const handleBulkDelete = async (e: React.MouseEvent) => {
 
               type="button"
 
-              onClick={() => setShowImportModal(true)}
-
-              className="px-3.5 py-1.5 border border-[#2F6BFF] hover:bg-blue-50 text-[#2F6BFF] rounded-md text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 bg-white cursor-pointer"
-
-            >
-
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-
-              </svg>
-
-              Import
-
-            </button>
-          )}
-
-          {hasPermission('CREATE_USER') && (
-            <button
-
-              type="button"
-
               onClick={() => router.push('/dashboard/users/create')}
 
               className="px-3.5 py-1.5 bg-[#2F6BFF] hover:bg-blue-700 text-white rounded-md text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
