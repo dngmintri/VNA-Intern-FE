@@ -37,3 +37,10 @@ export const resetPasswordApi = async (
   );
   return data;
 };
+
+export const clearResetPasswordOtpApi = async (email: string) => {
+  const { data } = await api.delete('/users/otp/reset-password', {
+    data: { email },
+  });
+  return data;
+};

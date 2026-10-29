@@ -132,6 +132,20 @@ export const Sidebar = () => {
 
   };
 
+  const handleLogout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch {
+      // Bo qua loi mang hoac token het han de luon dang xuat duoc phia client
+    } finally {
+      logout();
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('current_username');
+      window.location.href = '/login';
+    }
+  };
+
 
 
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
@@ -380,17 +394,7 @@ try {
 
       setTimeout(() => {
 
-        logout();
-
-        localStorage.removeItem('token');
-
-        localStorage.removeItem('refreshToken');
-
-        localStorage.removeItem('current_username');
-
-        
-
-        window.location.href = '/login';
+        handleLogout();
 
       }, 1500);
 
@@ -410,15 +414,7 @@ try {
 
         setTimeout(() => {
 
-          logout();
-
-          localStorage.removeItem('token');
-
-          localStorage.removeItem('refreshToken');
-
-          localStorage.removeItem('current_username');
-
-          window.location.href = '/login';
+          handleLogout();
 
         }, 1500);
 
@@ -876,17 +872,7 @@ try {
 
             <button 
 
-              onClick={() => {
-
-                logout();
-
-                localStorage.removeItem('token');
-
-                localStorage.removeItem('refreshToken');
-
-                window.location.href = '/login';
-
-              }}
+              onClick={handleLogout}
 
               className="w-full text-left px-3 py-2 hover:bg-red-50 flex items-center gap-2.5 text-red-600 border-t border-gray-100 mt-1 pt-2"
 
