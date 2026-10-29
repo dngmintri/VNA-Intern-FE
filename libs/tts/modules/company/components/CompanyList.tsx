@@ -633,7 +633,7 @@ export const CompanyList = () => {
 
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F4F6F9] min-h-screen font-sans">
+    <div className="flex-1 flex flex-col bg-[#F4F6F9] min-h-full font-sans">
       <div className="bg-white px-6 py-3.5 flex items-center justify-between border-b border-gray-200 flex-shrink-0">
         <h1 className="text-sm font-bold text-gray-800">Danh sách doanh nghiệp</h1>
         
@@ -655,9 +655,9 @@ export const CompanyList = () => {
         </div>
       </div>
 
-      <div className="p-6 space-y-4">
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
+      <div className="p-6 flex-1 flex flex-col min-h-0">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex-1 flex flex-col justify-between">
+          <div className="overflow-x-auto flex-1">
             <table className="w-full border-collapse text-left text-xs">
               <thead>
                 <tr className="bg-gray-50/75 border-b border-gray-200 text-gray-600 font-semibold text-xs">
@@ -893,7 +893,7 @@ export const CompanyList = () => {
             </table>
           </div>
 
-          <div className="px-6 py-3.5 flex items-center justify-end gap-6 text-xs text-gray-600 bg-white border-t border-gray-100">
+          <div className="px-6 py-3.5 flex items-center justify-end gap-6 text-xs text-gray-600 bg-white border-t border-gray-100 mt-auto flex-shrink-0">
             <div className="flex items-center gap-1.5">
               <select
                 value={pageSize}

@@ -512,18 +512,18 @@ const handlePreviewExcel = async (e: React.MouseEvent) => {
 
         
 
-        setTimeout(() => {
-
-          logout();
-
-          localStorage.removeItem('token');
-
-          localStorage.removeItem('refreshToken');
-
-          localStorage.removeItem('current_username');
-
-          window.location.href = '/login';
-
+        setTimeout(async () => {
+          try {
+            await api.post('/auth/logout');
+          } catch {
+            // ignore
+          } finally {
+            logout();
+            localStorage.removeItem('token');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('current_username');
+            window.location.href = '/login';
+          }
         }, 2000);
 
         return;
@@ -907,7 +907,7 @@ const handleBulkDelete = async (e: React.MouseEvent) => {
 
   return (
 
-    <div className="flex-1 flex flex-col bg-[#F4F6F9] min-h-screen font-sans">
+    <div className="flex-1 flex flex-col bg-[#F4F6F9] min-h-full font-sans">
 
       
 
@@ -947,11 +947,11 @@ const handleBulkDelete = async (e: React.MouseEvent) => {
 
 
 
-      <div className="p-6 space-y-4">
+      <div className="p-6 flex-1 flex flex-col min-h-0">
 
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex-1 flex flex-col justify-between">
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto flex-1">
 
             <table className="w-full border-collapse text-left text-xs">
 
@@ -1348,7 +1348,7 @@ const handleBulkDelete = async (e: React.MouseEvent) => {
 
 
 
-          <div className="px-6 py-3.5 flex items-center justify-between border-t border-gray-100 bg-white text-xs text-gray-500">
+          <div className="px-6 py-3.5 flex items-center justify-between border-t border-gray-100 bg-white text-xs text-gray-500 mt-auto flex-shrink-0">
 
             <button
 
@@ -1484,44 +1484,38 @@ const handleBulkDelete = async (e: React.MouseEvent) => {
 
 
 
-      {selectedUserIds.length > 0 && (
-
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-white rounded-lg shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-gray-100 flex items-center overflow-hidden animate-slideUp z-50 text-xs font-medium">
-
-          <div className="bg-[#2F6BFF] text-white px-4 py-3 font-bold flex items-center justify-center min-w-[40px]">{selectedUserIds.length}</div>
-
-          <div className="text-gray-700 px-5 py-3 select-none">dữ liệu được chọn</div>
-
-          <div className="px-2 flex items-center">
-
-          <button 
-
-            type="button" 
-
-            onClick={() => setShowBatchDeleteModal(true)}
-
-            className="bg-[#FF3B30] hover:bg-[#E03026] text-white font-bold px-3 py-1.5 rounded flex items-center gap-1 transition-colors cursor-pointer shadow-sm text-[11px]"
-
-          >
-
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-
-          </svg>
-
-            Xoá
-
-          </button>          
-
+      {selectedUserIds.length > 0 && hasPermission('DELETE_USER') && (
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 bg-white rounded-lg shadow-lg border border-gray-200 flex items-center h-8 overflow-hidden z-50 animate-fade-in text-xs">
+          <div className="bg-[#2F6BFF] text-white px-2.5 h-full flex items-center justify-center font-bold text-xs">
+            {selectedUserIds.length}
           </div>
-
-          <div className="h-6 w-px bg-gray-200 my-auto ml-2" />
-
-          <button type="button" onClick={() => setSelectedUserIds([])} className="p-3 text-gray-400 hover:text-gray-600 transition-colors text-sm font-bold flex items-center justify-center h-full cursor-pointer">✕</button>
-
+          
+          <div className="px-3 text-gray-700 font-medium whitespace-nowrap text-xs">
+            dữ liệu được chọn
+          </div>
+          
+          <button
+            type="button"
+            disabled={isBatchDeleting}
+            onClick={() => setShowBatchDeleteModal(true)}
+            className="bg-[#E53935] hover:bg-[#D32F2F] disabled:opacity-50 text-white rounded h-6 px-2.5 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer mr-2 shadow-sm"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Xoá
+          </button>
+          
+          <div className="h-4 w-px bg-gray-200 mr-2" />
+          
+          <button
+            type="button"
+            onClick={() => setSelectedUserIds([])}
+            className="text-gray-400 hover:text-gray-600 px-2 h-full flex items-center justify-center transition-colors cursor-pointer"
+          >
+            ✕
+          </button>
         </div>
-
       )}
 
 

@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
-import { forgotPasswordApi, resetPasswordApi } from '../api/auth.api';
+import { forgotPasswordApi, resetPasswordApi, clearResetPasswordOtpApi } from '../api/auth.api';
 import { AxiosError } from 'axios';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -137,6 +137,21 @@ export const ForgotPasswordForm = () => {
     }
   };
 
+  const handleCancelOtp = async () => {
+    if (email) {
+      try {
+        await clearResetPasswordOtpApi(email);
+        toast.success('Đã hủy yêu cầu đặt lại mật khẩu');
+      } catch {
+        // ignore
+      }
+    }
+    setStep(1);
+    setOtp('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setTimer(60);
+  };
   return (
     <div className="w-full max-w-[550px] p-8 bg-white rounded-xl shadow-sm border border-gray-100">
       <div className="flex justify-center mb-6">
@@ -292,7 +307,7 @@ export const ForgotPasswordForm = () => {
             </div>
           </div>
 
-          <div className="pt-2">
+          <div className="pt-2 space-y-2">
             <button
               type="submit"
               disabled={isLoading}
@@ -300,13 +315,29 @@ export const ForgotPasswordForm = () => {
             >
               {isLoading ? 'Đang xử lý...' : 'Khôi phục mật khẩu'}
             </button>
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={handleCancelOtp}
+              className="w-full py-2.5 text-xs font-semibold text-gray-500 hover:bg-gray-50 rounded-lg text-center block cursor-pointer transition-colors"
+            >
+              Hủy bỏ
+            </button>
           </div>
         </form>
       )}
 
       <p className="mt-5 text-center text-sm text-gray-500">
         Bạn đã có tài khoản?{' '}
-        <Link href="/login" className="text-blue-600 hover:underline font-medium">
+        <Link
+          href="/login"
+          onClick={() => {
+            if (step === 2 && email) {
+              clearResetPasswordOtpApi(email).catch(() => {});
+            }
+          }}
+          className="text-blue-600 hover:underline font-medium"
+        >
           Đăng nhập
         </Link>
       </p>
