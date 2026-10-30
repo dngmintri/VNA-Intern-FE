@@ -100,7 +100,9 @@ api.interceptors.response.use(
       requestUrl.includes("/auth/login") ||
       requestUrl.includes("/auth/refresh") ||
       requestUrl.includes("/auth/forgot-password") ||
-      requestUrl.includes("/auth/reset-password")
+      requestUrl.includes("/auth/reset-password") ||
+      requestUrl.includes("/verify-otp") ||
+      requestUrl.includes("/otp")
     ) {
       return Promise.reject(error);
     }
