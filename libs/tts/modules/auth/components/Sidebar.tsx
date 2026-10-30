@@ -71,11 +71,11 @@ const HIDDEN_MENU_BUTTONS: string[] = [
 
   // 'Quản lý doanh nghiệp',
 
-  'Kỳ báo cáo',
+  // 'Kỳ báo cáo',
 
-  'Danh mục chung',
+  // 'Danh mục chung',
 
-  'TNLĐ theo HĐLĐ',
+  // 'TNLĐ theo HĐLĐ',
 
 ];
 
