@@ -919,25 +919,36 @@ const handleBulkDelete = async (e: React.MouseEvent) => {
 
         <div className="flex items-center gap-2.5">
 
+          {hasPermission('DELETE_USER') && (
+            <button
+              type="button"
+              onClick={() => {
+                if (onViewDeleted) {
+                  onViewDeleted();
+                } else {
+                  router.push('/dashboard/users/deleted');
+                }
+              }}
+              className="px-3.5 py-1.5 bg-white hover:bg-red-50/60 border border-gray-300 hover:border-red-200 text-gray-700 hover:text-red-600 rounded-md text-xs font-semibold shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+              title="Xem danh sách tài khoản đã xóa"
+            >
+              <svg className="w-3.5 h-3.5 text-gray-500 hover:text-red-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              <span>Tài khoản đã xóa</span>
+            </button>
+          )}
+
           {hasPermission('CREATE_USER') && (
             <button
-
               type="button"
-
               onClick={() => router.push('/dashboard/users/create')}
-
               className="px-3.5 py-1.5 bg-[#2F6BFF] hover:bg-blue-700 text-white rounded-md text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
-
             >
-
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v16m7.5-8h-16" />
-
               </svg>
-
               Thêm mới
-
             </button>
           )}
 
