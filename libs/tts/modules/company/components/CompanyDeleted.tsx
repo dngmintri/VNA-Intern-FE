@@ -350,8 +350,8 @@ export const CompanyDeleted = ({ onBack }: CompanyDeletedProps) => {
                           )}
                         </div>
                       </td>
-                      <td className="py-2.5 px-3 text-gray-650 truncate max-w-[140px]" title={wardMap[company.wardDkkdId]}>
-                        {wardMap[company.wardDkkdId] || '—'}
+                      <td className="py-2.5 px-3 text-gray-650 truncate max-w-[140px]" title={wardMap[company.wardDkkdId] || (typeof company.wardDkkdId === 'string' && company.wardDkkdId ? company.wardDkkdId : '—')}>
+                        {wardMap[company.wardDkkdId] || (typeof company.wardDkkdId === 'string' && company.wardDkkdId ? company.wardDkkdId : '—')}
                       </td>
                       <td className="py-2.5 px-3 text-gray-550 truncate max-w-[150px]" title={company.businessType?.name}>
                         {company.businessType?.name || '—'}
