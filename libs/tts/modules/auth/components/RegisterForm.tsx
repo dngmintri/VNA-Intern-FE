@@ -23,7 +23,7 @@ interface Ward {
 }
 
 interface FilterItem {
-  id: number;
+  id: string | number;
   name: string;
   code?: string;
 }
@@ -50,6 +50,8 @@ export const RegisterForm = () => {
   const [otp, setOtp] = useState<string>('');
   const [registeredEmail, setRegisteredEmail] = useState<string>('');
   const [registeredTaxCode, setRegisteredTaxCode] = useState<string>('');
+  const [registrationRequestId, setRegistrationRequestId] = useState<string>('');
+  const [lastPayload, setLastPayload] = useState<any>(null);
   const [timer, setTimer] = useState<number>(60);
   const [isOtpResending, setIsOtpResending] = useState<boolean>(false);
 
@@ -225,26 +227,41 @@ export const RegisterForm = () => {
   const onRegisterSubmit = async (data: CompanyInput) => {
     setIsLoading(true);
     try {
-      const formatToBEDate = (dateStr: string | null | undefined): string | null => {
-        if (!dateStr) return null;
-        const [year, month, day] = dateStr.split('-');
-        return `${day}-${month}-${year}`;
-      };
+      const matchedBt = businessTypes.find(
+        (bt) => String(bt.id) === data.business_type || bt.code === data.business_type || bt.name === data.business_type
+      );
+      const matchedBi = businessIndustries.find(
+        (bi) => String(bi.id) === data.business_industry || bi.code === data.business_industry || bi.name === data.business_industry
+      );
 
       const payload = {
-        ...data,
-        license_issue_date: data.license_issue_date ? formatToBEDate(data.license_issue_date) : null,
-        foreign_business_name: data.foreign_business_name || null,
-        business_phone: data.business_phone || null,
-        representative_name: data.representative_name || null,
-        representative_phone: data.representative_phone || null,
-        business_operating_province: data.business_operating_province || null,
-        business_operating_ward: data.business_operating_ward || null,
-        business_operating_adress: data.business_operating_adress || null,
-        other_document_file_url: data.other_document_file_url || null,
+        name: data.business_name.trim(),
+        taxCode: data.tax_code.trim(),
+        email: data.email.trim().toLowerCase(),
+        businessTypeId: matchedBt ? String(matchedBt.id) : data.business_type,
+        businessIndustryId: matchedBi ? String(matchedBi.id) : data.business_industry,
+        licenseDate: data.license_issue_date || undefined,
+        registeredProvince: data.license_registration_province || undefined,
+        registeredDistrict: data.license_registration_ward || undefined,
+        address: data.license_registration_adress?.trim() || undefined,
+        foreignName: data.foreign_business_name?.trim() || undefined,
+        officePhone: data.business_phone?.trim() || undefined,
+        operatingProvince: data.business_operating_province || undefined,
+        operatingDistrict: data.business_operating_ward || undefined,
+        businessLocation: data.business_operating_adress?.trim() || undefined,
+        representativeName: data.representative_name?.trim() || undefined,
+        representativePhone: data.representative_phone?.trim() || undefined,
+        gpkdFilePath: data.business_license_file_url || undefined,
+        otherDocumentPath: data.other_document_file_url || undefined,
       };
 
-      await api.post('/auth/register-company', payload);
+      const res = await api.post('/business/register-bussiness', payload);
+      const resData = res.data?.data || res.data;
+      if (resData?.registrationRequestId) {
+        setRegistrationRequestId(resData.registrationRequestId);
+      }
+      setLastPayload(payload);
+
       toast.success('Gửi yêu cầu đăng ký thành công! Vui lòng kiểm tra email nhận mã kích hoạt.');
       setRegisteredEmail(data.email);
       setRegisteredTaxCode(data.tax_code);
@@ -282,8 +299,8 @@ export const RegisterForm = () => {
 
     setIsLoading(true);
     try {
-      await api.post('/auth/register-company/confirm', {
-        email: registeredEmail,
+      await api.post('/business/verify-registration-otp', {
+        registrationRequestId: registrationRequestId,
         otp: otp.trim(),
       });
       toast.success('Kích hoạt tài khoản thành công!');
@@ -298,12 +315,23 @@ export const RegisterForm = () => {
   };
 
   const handleResendOtp = async () => {
+    if (!lastPayload) {
+      toast.error('Không tìm thấy thông tin đăng ký để gửi lại');
+      return;
+    }
     setIsOtpResending(true);
     try {
+      const res = await api.post('/business/register-bussiness', lastPayload);
+      const resData = res.data?.data || res.data;
+      if (resData?.registrationRequestId) {
+        setRegistrationRequestId(resData.registrationRequestId);
+      }
       toast.success('Đã gửi lại mã kích hoạt về email của bạn!');
       setTimer(60);
-    } catch (err) {
-      toast.error('Gửi lại mã kích hoạt thất bại');
+    } catch (err: unknown) {
+      const axiosError = err as AxiosError<{ message?: string }>;
+      const msg = axiosError.response?.data?.message || 'Gửi lại mã kích hoạt thất bại';
+      toast.error(msg);
     } finally {
       setIsOtpResending(false);
     }
