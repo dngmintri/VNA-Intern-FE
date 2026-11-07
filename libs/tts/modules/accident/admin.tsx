@@ -351,6 +351,13 @@ export const AccidentAdmin = () => {
   const canView = hasPermission('VIEW_REPORT');
   const router = useRouter();
 
+  const [isMounted, setIsMounted] = useState<boolean>(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const hasApproveOrReject = isMounted && (canApprove || canReject);
+
   const [reports, setReports] = useState<ReportItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<(number | string)[]>([]);
   const [viewMode, setViewMode] = useState<'LIST' | 'DETAIL' | 'SUMMARY'>('LIST');
@@ -428,7 +435,8 @@ export const AccidentAdmin = () => {
     const loadConfigData = async () => {
       try {
         const periodRes = await api.get('/report-periods', { params: { limit: 100 } }).catch(() => null);
-        const periodList = periodRes?.data?.data?.data || [];
+        const rawPeriod = periodRes?.data?.data;
+        const periodList = Array.isArray(rawPeriod) ? rawPeriod : (rawPeriod?.data || []);
         if (periodList.length > 0) {
           const years: number[] = Array.from(new Set(periodList.map((p: ReportPeriod) => p.year)));
           years.sort((a, b) => b - a);
@@ -481,7 +489,9 @@ export const AccidentAdmin = () => {
     const fetchPeriods = async () => {
       try {
         const res = await api.get('/report-periods', { params: { year: selectedYear, limit: 100 } }).catch(() => null);
-        setPeriods(res?.data?.data?.data || []);
+        const raw = res?.data?.data;
+        const periodItems = Array.isArray(raw) ? raw : (raw?.data || []);
+        setPeriods(periodItems);
       } catch (err) {
         console.error('Lỗi khi tải danh sách kỳ:', err);
       }
@@ -492,8 +502,26 @@ export const AccidentAdmin = () => {
   const fetchReports = async () => {
     setIsLoading(true);
     try {
+      let statusParam: 'reporting' | 'received' | 'approved' | 'rejected' | undefined = undefined;
+      if (selectedStatus === 'DRAFT') statusParam = 'reporting';
+      else if (selectedStatus === 'SUBMITTED') statusParam = 'received';
+      else if (selectedStatus === 'APPROVED') statusParam = 'approved';
+      else if (selectedStatus === 'REJECTED') statusParam = 'rejected';
+
+      let periodParam: '6 months' | '12 months' | undefined = undefined;
+      if (selectedPeriod.includes('12') || selectedPeriod.includes('Cả năm')) {
+        periodParam = '12 months';
+      } else if (selectedPeriod.includes('6')) {
+        periodParam = '6 months';
+      }
+
+      const searchParam = (searchName || searchTaxCode || '').trim() || undefined;
+
       const response = await reportApi.getReportsByYear({
         year: selectedYear,
+        status: statusParam,
+        period: periodParam,
+        search: searchParam,
         pageNumber: currentPage,
         pageSize,
       });
@@ -505,7 +533,11 @@ export const AccidentAdmin = () => {
       const mappedList: ReportItem[] = list.map((item: any) => {
         const company = item.business || item.company;
         const pName = item.period === '12 months' || item.period === 'Cả năm' ? 'Cả năm' : '6 tháng';
-        const st = item.status === 'received' ? 'SUBMITTED' : (item.status === 'reporting' ? 'DRAFT' : (item.status || 'SUBMITTED'));
+        let st: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' = 'SUBMITTED';
+        if (item.status === 'approved' || item.status === 'APPROVED') st = 'APPROVED';
+        else if (item.status === 'rejected' || item.status === 'REJECTED') st = 'REJECTED';
+        else if (item.status === 'received' || item.status === 'SUBMITTED') st = 'SUBMITTED';
+        else if (item.status === 'reporting' || item.status === 'DRAFT') st = 'DRAFT';
 
         return {
           id: item.id,
@@ -533,17 +565,13 @@ export const AccidentAdmin = () => {
       });
 
       const filteredList = mappedList.filter((item: ReportItem) => {
-        if (searchName && !item.companyName.toLowerCase().includes(searchName.toLowerCase())) return false;
-        if (searchTaxCode && !item.taxCode.toLowerCase().includes(searchTaxCode.toLowerCase())) return false;
-        if (selectedPeriod && !item.period.toLowerCase().includes(selectedPeriod.toLowerCase())) return false;
-        if (selectedStatus && item.status !== selectedStatus) return false;
         if (selectedProvince && item.province !== selectedProvince) return false;
         if (selectedWard && item.ward !== selectedWard) return false;
         return true;
       });
 
       setReports(filteredList);
-      setTotalItems(total || filteredList.length);
+      setTotalItems(total ?? filteredList.length);
     } catch (err) {
       console.error('Lỗi khi tải danh sách báo cáo:', err);
       toast.error('Không thể tải danh sách báo cáo');
@@ -591,6 +619,10 @@ export const AccidentAdmin = () => {
     try {
       await api.patch('/so/reports/approve', { reportIds: approveConfirmTargetIds });
       toast.success(`Đã duyệt thành công ${approveConfirmTargetIds.length} báo cáo!`);
+      setReports(prev => prev.map(r => approveConfirmTargetIds.includes(r.id) ? { ...r, status: 'APPROVED' } : r));
+      if (selectedReport && approveConfirmTargetIds.includes(selectedReport.id)) {
+        setSelectedReport(prev => prev ? { ...prev, status: 'APPROVED' } : null);
+      }
       setShowApproveConfirmModal(false);
       setApproveConfirmTargetIds([]);
       setSelectedIds([]);
@@ -645,6 +677,10 @@ export const AccidentAdmin = () => {
       );
 
       toast.success(`Đã từ chối ${rejectTargetIds.length} báo cáo.`);
+      setReports(prev => prev.map(r => rejectTargetIds.includes(r.id) ? { ...r, status: 'REJECTED' } : r));
+      if (selectedReport && rejectTargetIds.includes(selectedReport.id)) {
+        setSelectedReport(prev => prev ? { ...prev, status: 'REJECTED' } : null);
+      }
       setShowRejectModal(false);
       setSelectedIds([]);
       setRejectTargetIds([]);
@@ -1065,7 +1101,7 @@ export const AccidentAdmin = () => {
             <table className="w-full border-collapse text-left text-xs">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100 text-gray-500 font-bold uppercase tracking-normal text-[10px]">
-                  {(canApprove || canReject) && (
+                  {hasApproveOrReject && (
                     <th className="py-3 px-2 text-center w-10">
                       <div className="flex items-center justify-center">
                         <input
@@ -1091,7 +1127,7 @@ export const AccidentAdmin = () => {
                 </tr>
                 
                 <tr className="bg-gray-50/50 border-b border-gray-100">
-                  {(canApprove || canReject) && <th className="py-2 px-2"></th>}
+                  {hasApproveOrReject && <th className="py-2 px-2"></th>}
                   <th className="py-2 px-2 text-center">
                     <button
                       type="button"
@@ -1152,14 +1188,14 @@ export const AccidentAdmin = () => {
               <tbody className="divide-y divide-gray-100 text-gray-700">
                 {reports.length === 0 ? (
                   <tr>
-                    <td colSpan={canApprove || canReject ? 6 : 5} className="py-8 text-center text-gray-400 font-medium bg-white">
+                    <td colSpan={hasApproveOrReject ? 6 : 5} className="py-8 text-center text-gray-400 font-medium bg-white">
                       Không tìm thấy báo cáo nào phù hợp.
                     </td>
                   </tr>
                 ) : (
                   reports.map((report) => (
                     <tr key={report.id} className="hover:bg-gray-50/50 transition-colors">
-                      {(canApprove || canReject) && (
+                      {hasApproveOrReject && (
                         <td className="py-2.5 px-2 text-center">
                           <div className="flex items-center justify-center">
                             <input

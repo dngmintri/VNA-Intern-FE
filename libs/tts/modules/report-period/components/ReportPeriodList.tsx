@@ -6,15 +6,18 @@ import { api } from '@/libs/core/api/axios';
 import { AxiosError } from 'axios';
 import { ReportPeriodModal } from './ReportPeriodModal';
 import { useHasPermission } from '@/libs/shared/hooks/useHasPermission';
+import { reportApi } from '@/libs/tts/modules/accident/services/report.api';
 
 interface ReportPeriod {
-  id: number;
+  id: string | number;
   name: string;
   year: number;
-  quarter: number;
-  startDate: string | null;
-  endDate: string | null;
-  dueDate: string | null;
+  quarter?: number;
+  startDate?: string | null;
+  endDate?: string | null;
+  dateStart?: string | null;
+  dateEnd?: string | null;
+  dueDate?: string | null;
   status: 'OPEN' | 'CLOSED';
 }
 
@@ -51,7 +54,7 @@ export const ReportPeriodList = () => {
   const [filterStatus, setFilterStatus] = useState<string>('');
 
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [selectedPeriodId, setSelectedPeriodId] = useState<number | null>(null);
+  const [selectedPeriodId, setSelectedPeriodId] = useState<string | number | null>(null);
 
   const parseName = (fullName: string) => {
     let guessedPeriodType = 'Cả năm';
@@ -76,26 +79,43 @@ export const ReportPeriodList = () => {
   const fetchPeriods = async () => {
     setIsLoading(true);
     try {
-      const params: Record<string, string | number | undefined> = {
-        page: currentPage,
-        limit: pageSize,
-      };
-
-      if (filterYear) params.year = Number(filterYear);
-      if (filterStatus) params.status = filterStatus;
-      if (filterStartDate) params.startDate = filterStartDate;
-      if (filterEndDate) params.endDate = filterEndDate;
-      
-      if (filterReportName || filterPeriodType) {
-        params.name = `${filterReportName} ${filterPeriodType}`.trim();
+      let periodParam: any = undefined;
+      if (filterPeriodType.includes('12') || filterPeriodType.includes('Cả năm')) {
+        periodParam = '12 months';
+      } else if (filterPeriodType.includes('6')) {
+        periodParam = '6 months';
       }
 
-      const response = await api.get('/report-periods', { params });
-      
-      if (response.data?.data) {
-        setPeriods(response.data.data.data || []);
-        setTotalItems(response.data.data.meta?.total || 0);
-      }
+      let statusBool: boolean | undefined = undefined;
+      if (filterStatus === 'OPEN') statusBool = true;
+      if (filterStatus === 'CLOSED') statusBool = false;
+
+      const searchParam = filterReportName.trim() || undefined;
+
+      const response = await reportApi.getReportConfigs({
+        year: filterYear ? Number(filterYear) : undefined,
+        period: periodParam,
+        status: statusBool,
+        search: searchParam,
+        pageNumber: currentPage,
+        pageSize,
+      });
+
+      const resData = response.data;
+      const rawItems = resData?.data;
+      const list = Array.isArray(rawItems) ? rawItems : (rawItems?.data || resData?.items || []);
+
+      const mapped: ReportPeriod[] = list.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        year: item.year,
+        startDate: item.dateStart || item.startDate,
+        endDate: item.dateEnd || item.endDate,
+        status: (item.status === true || item.status === 'OPEN') ? 'OPEN' : 'CLOSED',
+      }));
+
+      setPeriods(mapped);
+      setTotalItems(resData?.pagination?.totalItems ?? resData?.total ?? mapped.length);
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       const msg = axiosError.response?.data?.message || 'Không thể tải danh sách cấu hình báo cáo';
@@ -134,20 +154,19 @@ export const ReportPeriodList = () => {
     setIsModalOpen(true);
   };
 
-  const handleOpenEditModal = (id: number) => {
+  const handleOpenEditModal = (id: string | number) => {
     setSelectedPeriodId(id);
     setIsModalOpen(true);
   };
 
   const handleToggleStatus = async (period: ReportPeriod) => {
-    const newStatus = period.status === 'OPEN' ? 'CLOSED' : 'OPEN';
+    const isCurrentlyOpen = period.status === 'OPEN';
+    const nextStatus = !isCurrentlyOpen;
     try {
-      await api.patch(`/report-periods/${period.id}/delete`, {
-        status: newStatus,
-      });
+      await reportApi.updateReportConfigStatus(String(period.id), nextStatus);
       toast.success(
-        newStatus === 'OPEN' 
-          ? 'Đã mở khóa kỳ báo cáo thành công!' 
+        nextStatus
+          ? 'Đã mở khóa kỳ báo cáo thành công!'
           : 'Đã đóng khóa kỳ báo cáo thành công!'
       );
       fetchPeriods();

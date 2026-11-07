@@ -1730,7 +1730,7 @@ const handleConfirmSubmit = async () => {
         <div className="flex items-center gap-3 font-semibold">
 
           <input type="text" disabled value={reportYear} className="w-16 px-2 py-1 text-center border border-gray-200 rounded bg-gray-50 text-gray-700 font-bold" />
-          <button type="button" onClick={() => router.push('/dashboard/accidents-enterprise')} className="border border-gray-200 text-gray-600 hover:bg-gray-50 px-3.5 py-1.5 rounded-md flex items-center gap-1 transition-colors cursor-pointer">❮ Quay lại</button>
+          <button type="button" onClick={() => router.back()} className="border border-gray-200 text-gray-600 hover:bg-gray-50 px-3.5 py-1.5 rounded-md flex items-center gap-1 transition-colors cursor-pointer">❮ Quay lại</button>
           <button
             type="button"
             onClick={handlePrint}
@@ -1754,7 +1754,7 @@ const handleConfirmSubmit = async () => {
             </div>
             <div className="px-6 pb-5 flex justify-end gap-3 font-bold text-xs">
               <button type="button" onClick={() => setShowCancelWarning(false)} className="border border-gray-200 text-gray-600 hover:bg-gray-50 px-3.5 py-1.5 rounded-md flex items-center gap-1 transition-colors cursor-pointer">❮ Quay lại</button>
-              <button type="button" onClick={() => { setShowCancelWarning(false); router.push('/dashboard/accidents-enterprise'); }} className="px-5 py-2 bg-[#2F6BFF] hover:bg-blue-700 text-white rounded-lg shadow-sm transition-colors cursor-pointer">Đồng ý</button>
+              <button type="button" onClick={() => { setShowCancelWarning(false); router.back(); }} className="px-5 py-2 bg-[#2F6BFF] hover:bg-blue-700 text-white rounded-lg shadow-sm transition-colors cursor-pointer">Đồng ý</button>
             </div>
           </div>
         </div>
