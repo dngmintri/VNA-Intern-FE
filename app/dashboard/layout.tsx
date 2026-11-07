@@ -28,8 +28,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     });
   }, []);
   return (
-    <div className="flex h-screen w-screen bg-[#F4F6F9] font-sans antialiased overflow-hidden no-print">
-      <Sidebar />
+    <div className="flex h-screen w-screen bg-[#F4F6F9] font-sans antialiased overflow-hidden">
+      <div className="no-print h-full">
+        <Sidebar />
+      </div>
       <div className="flex-1 h-full overflow-y-auto">
         {children}
       </div>

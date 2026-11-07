@@ -1,7 +1,7 @@
 import { api } from '@/libs/core/api/axios';
 
 export type ReportPeriod = '6 months' | '12 months';
-export type ReportStatus = 'reporting' | 'received';
+export type ReportStatus = 'reporting' | 'received' | 'pending';
 
 export interface BusinessInfoForReport {
   id: string;
@@ -17,19 +17,23 @@ export interface BusinessInfoForReport {
 }
 
 export interface ReportItem {
-  id: string;
+  id: string | null;
+  configId?: string | null;
+  configName?: string | null;
   year: number;
   period: ReportPeriod;
   status: ReportStatus;
-  totalEmployees: number;
-  totalFemaleEmployees: number;
-  totalQuyLuong: number;
+  totalEmployees?: number;
+  totalFemaleEmployees?: number;
+  totalQuyLuong?: number;
+  attachmentUrl?: string | null;
+  attachmentName?: string | null;
   createdAt: string;
   updatedAt: string;
   business?: {
-    id: string;
-    name: string;
-    taxCode: string;
+    id?: string;
+    name?: string;
+    taxCode?: string;
     address?: string;
   };
   reportAccident?: any;
@@ -46,6 +50,7 @@ export interface MyReportsResponse {
 
 export interface SaveStep1Payload {
   reportId?: string;
+  configId?: string;
   year: number;
   period: ReportPeriod;
   totalEmployees: number;

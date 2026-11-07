@@ -90,7 +90,8 @@ export const Enterprise: React.FC = () => {
       {/* Nội dung danh sách */}
       <div className="p-6 space-y-4 flex-1 flex flex-col justify-start">
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col flex-1">
-          <table className="w-full border-collapse text-left text-xs">
+          <div className="flex-1 overflow-x-auto">
+            <table className="w-full border-collapse text-left text-xs">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100 text-gray-500 font-bold uppercase tracking-normal text-[10px]">
                 <th className="py-3.5 px-4 w-28 text-center">Thao tác</th>
@@ -110,30 +111,49 @@ export const Enterprise: React.FC = () => {
                 </tr>
               ) : reports.length > 0 ? (
                 reports.map((item) => {
+                  const isPending = item.status === 'pending';
                   const isDraft = item.status === 'reporting';
+                  const isReceived = item.status === 'received';
                   const periodLabel = item.period === '6 months' ? '6 tháng đầu năm' : 'Cả năm (12 tháng)';
 
                   return (
-                    <tr key={item.id} className="hover:bg-gray-50/60 transition-colors h-14">
+                    <tr key={item.id || item.configId || Math.random()} className="hover:bg-gray-50/60 transition-colors h-14">
                       <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center gap-2">
-                          {/* Xem chi tiết */}
-                          <button
-                            title="Xem chi tiết báo cáo"
-                            onClick={() => router.push(`/dashboard/accidents-enterprise/view/${item.id}`)}
-                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                          </button>
-
-                          {/* Chỉnh sửa nếu đang ở bản thảo */}
-                          {isDraft && (
+                          {/* Xem chi tiết (khi đã có báo cáo) */}
+                          {item.id ? (
                             <button
-                              title="Chỉnh sửa số liệu"
-                              onClick={() => router.push(`/dashboard/accidents-enterprise/edit/${item.id}`)}
+                              title="Xem chi tiết báo cáo"
+                              onClick={() => router.push(`/dashboard/accidents-enterprise/view/${item.id}`)}
+                              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                            </button>
+                          ) : (
+                            <span className="p-1.5 text-gray-200 cursor-not-allowed" title="Chưa có dữ liệu báo cáo">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                            </span>
+                          )}
+
+                          {/* Chỉnh sửa / Bắt đầu nhập (Khi đang chờ báo cáo hoặc đang lập báo cáo) */}
+                          {(isPending || isDraft) && (
+                            <button
+                              title={isPending ? 'Bắt đầu lập báo cáo' : 'Chỉnh sửa số liệu'}
+                              onClick={() => {
+                                if (item.id) {
+                                  router.push(`/dashboard/accidents-enterprise/edit/${item.id}`);
+                                } else {
+                                  router.push(
+                                    `/dashboard/accidents-enterprise/edit/new?configId=${item.configId || ''}&year=${item.year}&period=${encodeURIComponent(item.period)}`
+                                  );
+                                }
+                              }}
                               className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all cursor-pointer"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -159,12 +179,14 @@ export const Enterprise: React.FC = () => {
                       <td className="py-3 px-6 text-center">
                         <span
                           className={`px-3 py-1 rounded-full text-[10px] font-bold border ${
-                            isDraft
+                            isPending
+                              ? 'bg-blue-50 text-blue-600 border-blue-200'
+                              : isDraft
                               ? 'bg-amber-50 text-amber-600 border-amber-200'
                               : 'bg-emerald-50 text-emerald-600 border-emerald-200'
                           }`}
                         >
-                          {isDraft ? 'Đang lập báo cáo' : 'Đã nộp cho Sở'}
+                          {isPending ? 'Chờ báo cáo' : isDraft ? 'Đang lập báo cáo' : 'Đã tiếp nhận'}
                         </span>
                       </td>
                     </tr>
@@ -179,9 +201,10 @@ export const Enterprise: React.FC = () => {
               )}
             </tbody>
           </table>
+          </div>
 
           {/* Phân trang */}
-          <div className="px-6 py-4 flex items-center justify-between border-t border-gray-100 bg-gray-50/50 text-xs text-gray-500 flex-shrink-0">
+          <div className="mt-auto px-6 py-4 flex items-center justify-between border-t border-gray-100 bg-gray-50/50 text-xs text-gray-500 flex-shrink-0">
             <div className="flex items-center gap-1.5">
               <span>Hiển thị</span>
               <select

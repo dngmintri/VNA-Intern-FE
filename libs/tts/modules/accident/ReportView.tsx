@@ -160,25 +160,20 @@ interface DetailItem {
   propertyDamage: string;
 }
 
-const formatMoneyInput = (value: string): string => {
-  if (!value) return '';
-  let cleanValue = value.trim();
-  if (/^\d+\.\d+$/.test(cleanValue)) {
-    cleanValue = cleanValue.replace('.', ',');
-  }
-  let clean = cleanValue.replace(/[^0-9,.]/g, '');
-  if (clean.endsWith('.')) {
-    clean = clean.slice(0, -1) + ',';
-  }
-  const parts = clean.split(',');
-  const integerPart = parts[0].replace(/\./g, '');
-  const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+const formatMoneyInput = (value: string | number): string => {
+  if (value === null || value === undefined || value === '') return '';
+  let str = String(value).trim();
 
-  if (parts.length > 1) {
-    const decimalPart = parts[1].replace(/[^0-9]/g, '');
-    return `${formattedInteger},${decimalPart}`;
+  // Loại bỏ phần thập phân .00 từ chuỗi trả về của Database (PostgreSQL numeric dạng "10000000.00")
+  if (/^\d+\.\d{1,2}$/.test(str)) {
+    str = str.split('.')[0];
   }
-  return formattedInteger;
+
+  let digits = str.replace(/\D/g, '');
+  if (!digits) return '';
+  // Bỏ các số 0 vô nghĩa ở đầu (ví dụ: '010' -> '10', '00' -> '0')
+  digits = digits.replace(/^0+(?=\d)/, '');
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 };
 
 const parseMoneyToFloat = (value: string): number => {
@@ -322,11 +317,11 @@ const [formData, setFormData] = useState<FormDataState>({
     unmanagedFatalities: 0,
     unmanagedSevereInjuries: 0,
     medicalCosts: '',
-    treatmentSalaryCosts: '0',
-    compensationCosts: '0',
-    totalCosts: '0',
+    treatmentSalaryCosts: '',
+    compensationCosts: '',
+    totalCosts: '',
     totalDaysOff: 0,
-    propertyDamage: '0',
+    propertyDamage: '',
   },
 
   subsidizedDetails: [
@@ -961,9 +956,13 @@ if (totalSubsidized > totalGeneral) {
 
 const handleStep4Change = (key: keyof StatisticData, value: string) => {
   setFormData((prev) => {
-    const cleanValue = value === '' ? '0' : value;
     const isMoney = ['medicalCosts', 'treatmentSalaryCosts', 'compensationCosts', 'propertyDamage'].includes(key);
-    const newValue = isMoney ? formatMoneyInput(cleanValue) : cleanIntegerString(cleanValue);
+    let newValue: string | number;
+    if (isMoney) {
+      newValue = formatMoneyInput(value);
+    } else {
+      newValue = value === '' ? 0 : cleanIntegerString(value);
+    }
 
     const updatedStats = { ...prev.subsidizedStatistic, [key]: newValue };
 
@@ -971,7 +970,7 @@ const handleStep4Change = (key: keyof StatisticData, value: string) => {
       const sum = parseMoneyToFloat(updatedStats.medicalCosts as string) + 
                   parseMoneyToFloat(updatedStats.treatmentSalaryCosts as string) + 
                   parseMoneyToFloat(updatedStats.compensationCosts as string);
-      updatedStats.totalCosts = formatFloatToVNDString(sum);
+      updatedStats.totalCosts = sum > 0 ? formatFloatToVNDString(sum) : '';
     }
 
     const newErrors = validateStep4(updatedStats);
@@ -987,16 +986,8 @@ const isStep4Filled = () => {
 };
 
 
-const handlePrint = async () => {
-  const id = params?.id;
-  if (!id) return;
-
-  const res = await api.get(`/reports/${id}/print`, {
-    responseType: "blob",
-  });
-
-  const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
-  window.open(url);
+const handlePrint = () => {
+  window.print();
 };
 
 const handleSaveSubmit = async () => {

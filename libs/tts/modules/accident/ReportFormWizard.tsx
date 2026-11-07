@@ -8,7 +8,7 @@ import axios, { AxiosError } from 'axios';
 import { useAuthStore } from '@/libs/tts/store/auth.store';
 import { decodeJwt } from '@/libs/shared/utils/jwt';
 import { ReportData, ReportSheet, ReportStatistic } from '@/libs/tts/modules/accident/components/ReportSheet';
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { reportApi, ReportPeriod } from '@/libs/tts/modules/accident/services/report.api';
 interface WizardProps {
   reportId: string | number;
@@ -160,19 +160,32 @@ interface DetailItem {
   propertyDamage: string;
 }
 
-export const formatMoneyInput = (value: string): string => {
-  if (!value) return '';
-  const digits = value.replace(/\D/g, '');
+export const formatMoneyInput = (value: string | number): string => {
+  if (value === null || value === undefined || value === '') return '';
+  let str = String(value).trim();
 
+  // Loại bỏ phần thập phân .00 từ chuỗi trả về của Database (PostgreSQL numeric dạng "10000000.00")
+  if (/^\d+\.\d{1,2}$/.test(str)) {
+    str = str.split('.')[0];
+  }
+
+  let digits = str.replace(/\D/g, '');
   if (!digits) return '';
+  // Bỏ các số 0 vô nghĩa ở đầu (ví dụ: '010' -> '10', '00' -> '0')
+  digits = digits.replace(/^0+(?=\d)/, '');
   return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 };
 
-export const parseMoney = (value: string): number => {
-  if (!value) return 0;
+export const parseMoney = (value: string | number): number => {
+  if (value === null || value === undefined || value === '') return 0;
+  let str = String(value).trim();
 
-  const digits = value.replace(/\D/g, '');
+  // Loại bỏ phần thập phân .00 từ chuỗi trả về của Database (PostgreSQL numeric dạng "10000000.00")
+  if (/^\d+\.\d{1,2}$/.test(str)) {
+    str = str.split('.')[0];
+  }
 
+  const digits = str.replace(/\D/g, '');
   return digits ? Number(digits) : 0;
 };
 
@@ -264,6 +277,11 @@ const DEFAULT_PROFESSIONS: CategoryItem[] = [
 
 export const ReportFormWizard: React.FC<WizardProps> = ({ reportId }) => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const configIdParam = searchParams.get('configId');
+  const yearParam = searchParams.get('year');
+  const periodParam = searchParams.get('period');
+  const [activeReportId, setActiveReportId] = useState<string>(String(reportId));
   const { accessToken } = useAuthStore();
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -271,7 +289,8 @@ export const ReportFormWizard: React.FC<WizardProps> = ({ reportId }) => {
   const [showCancelWarning, setShowCancelWarning] = useState<boolean>(false);
   const [errors, setErrors] = useState<FormErrorsState>({});
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const mainFileInputRef = React.useRef<HTMLInputElement>(null);
+  const modalFileInputRef = React.useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const params = useParams();
@@ -361,7 +380,7 @@ const [formData, setFormData] = useState<FormDataState>({
     unmanagedFemaleVictims: 0,
     unmanagedFatalities: 0,
     unmanagedSevereInjuries: 0,
-    medicalCosts: '',
+    medicalCosts: '0',
     treatmentSalaryCosts: '0',
     compensationCosts: '0',
     totalCosts: '0',
@@ -404,13 +423,16 @@ useEffect(() => {
       const decoded = accessToken ? (decodeJwt(accessToken) as JwtDecoded) : null;
       const taxCode = decoded?.username || "";
 
+      const isNew = String(activeReportId) === 'new' || !activeReportId;
       const [profileRes, reportRes] = await Promise.all([
         taxCode
           ? api.get<{ data: CompanyProfileResponse }>(
               `/company/${taxCode}/company-profile`
             ).catch(() => null)
           : null,
-        reportApi.getReportOverviewDetail(String(reportId)).catch(() => null),
+        !isNew
+          ? reportApi.getReportOverviewDetail(String(activeReportId)).catch(() => null)
+          : null,
       ]);
 
       const res = reportRes?.data?.data || reportRes?.data || {};
@@ -420,10 +442,23 @@ useEffect(() => {
       const accidentDetails = Array.isArray(res.accidentDetails) ? res.accidentDetails : [];
       const benefitAccident = res.benefitAccident || {};
 
-      const pName = report.period === '12 months' ? 'Cả năm' : '6 tháng';
-      setPeriodName(pName);
-      if (report.year) {
-        setReportYear(report.year.toString());
+      if (isNew) {
+        if (yearParam) setReportYear(yearParam);
+        const pName = periodParam === '12 months' ? 'Cả năm' : '6 tháng';
+        setPeriodName(pName);
+      } else {
+        const pName = report.period === '12 months' ? 'Cả năm' : '6 tháng';
+        setPeriodName(pName);
+        if (report.year) {
+          setReportYear(report.year.toString());
+        }
+        if (report.attachmentUrl) {
+          const fullUrl = report.attachmentUrl.startsWith('http')
+            ? report.attachmentUrl
+            : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${report.attachmentUrl}`;
+          setFileUrl(fullUrl);
+          setSelectedFileName(report.attachmentName || 'Bao_cao_dinh_kem.pdf');
+        }
       }
 
       const mapDetail = (detail: any): DetailItem => {
@@ -588,29 +623,29 @@ useEffect(() => {
           medicalCosts:
             benefitAccident.budgetMedical && Number(benefitAccident.budgetMedical) !== 0
               ? formatMoneyInput(String(benefitAccident.budgetMedical))
-              : "",
+              : "0",
 
           treatmentSalaryCosts:
             benefitAccident.budgetSalary && Number(benefitAccident.budgetSalary) !== 0
               ? formatMoneyInput(String(benefitAccident.budgetSalary))
-              : "",
+              : "0",
 
           compensationCosts:
             benefitAccident.budgetHelp && Number(benefitAccident.budgetHelp) !== 0
               ? formatMoneyInput(String(benefitAccident.budgetHelp))
-              : "",
+              : "0",
 
           totalCosts:
             benefitAccident.totalBudget && Number(benefitAccident.totalBudget) !== 0
               ? formatMoneyInput(String(benefitAccident.totalBudget))
-              : "",
+              : "0",
 
           totalDaysOff: Number(benefitAccident.totalDayOff) || 0,
 
           propertyDamage:
             benefitAccident.totalThietHai && Number(benefitAccident.totalThietHai) !== 0
               ? formatMoneyInput(String(benefitAccident.totalThietHai))
-              : "",
+              : "0",
         },
 
         subsidizedDetails: [],
@@ -976,9 +1011,13 @@ if (totalSubsidized > totalGeneral) {
 
 const handleStep4Change = (key: keyof StatisticData, value: string) => {
   setFormData((prev) => {
-    const cleanValue = value === '' ? '0' : value;
     const isMoney = ['medicalCosts', 'treatmentSalaryCosts', 'compensationCosts', 'propertyDamage'].includes(key);
-    const newValue = isMoney ? formatMoneyInput(cleanValue) : cleanIntegerString(cleanValue);
+    let newValue: string | number;
+    if (isMoney) {
+      newValue = value === '' ? '0' : formatMoneyInput(value);
+    } else {
+      newValue = cleanIntegerString(value);
+    }
 
     const updatedStats = { ...prev.subsidizedStatistic, [key]: newValue };
 
@@ -1004,16 +1043,8 @@ const isStep4Filled = () => {
 };
 
 
-const handlePrint = async () => {
-  const id = params?.id;
-  if (!id) return;
-
-  const res = await api.get(`/reports/${id}/print`, {
-    responseType: "blob",
-  });
-
-  const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
-  window.open(url);
+const handlePrint = () => {
+  window.print();
 };
 
 const handleSaveSubmit = async () => {
@@ -1025,8 +1056,10 @@ const handleSaveSubmit = async () => {
       ? ('12 months' as ReportPeriod)
       : ('6 months' as ReportPeriod);
 
-    await reportApi.saveStep1({
-      reportId: String(reportId),
+    const isNew = String(activeReportId) === 'new' || !activeReportId;
+    const resStep1 = await reportApi.saveStep1({
+      reportId: !isNew ? String(activeReportId) : undefined,
+      configId: configIdParam || undefined,
       year: Number(reportYear) || new Date().getFullYear(),
       period: periodVal,
       totalEmployees: Number(formData.companyInfo.totalEmployees) || 0,
@@ -1034,9 +1067,15 @@ const handleSaveSubmit = async () => {
       totalQuyLuong: parseMoney(formData.companyInfo.totalSalaryFund) || 0,
     });
 
+    const currentId = String(resStep1.data?.reportId || resStep1.data?.data?.id || activeReportId);
+    if (currentId !== activeReportId) {
+      setActiveReportId(currentId);
+      window.history.replaceState(null, '', `/dashboard/accidents-enterprise/edit/${currentId}`);
+    }
+
     // Lưu Bước 2.1: Tổng số vụ tai nạn
     const s = formData.generalStatistic;
-    await reportApi.saveStep2Accident(String(reportId), {
+    await reportApi.saveStep2Accident(currentId, {
       totalAccident: Number(s.totalIncidents) || 0,
       totalAccidentDeath: Number(s.incidentsWithFatalities) || 0,
       totalHumanInjuredMore2: Number(s.incidentsWithMultipleVictims) || 0,
@@ -1076,11 +1115,11 @@ const handleSaveSubmit = async () => {
       totalDayOff: Number(detail.totalDaysOff) || 0,
       totalThietHai: parseMoney(detail.propertyDamage) || 0,
     }));
-    await reportApi.saveStep2Detail(String(reportId), { details: detailsPayload });
+    await reportApi.saveStep2Detail(currentId, { details: detailsPayload });
 
     // Lưu Bước 3: Trợ cấp
     const sub = formData.subsidizedStatistic;
-    await reportApi.saveStep3BenefitAccident(String(reportId), {
+    await reportApi.saveStep3BenefitAccident(currentId, {
       totalAccident: Number(sub.totalIncidents) || 0,
       totalAccidentDeath: Number(sub.incidentsWithFatalities) || 0,
       totalHumanInjuredMore2: Number(sub.incidentsWithMultipleVictims) || 0,
@@ -1100,8 +1139,17 @@ const handleSaveSubmit = async () => {
       totalThietHai: parseMoney(sub.propertyDamage) || 0,
     });
 
+    // Đính kèm file nếu có
+    if (fileUrl && selectedFileName) {
+      const serverPath = fileUrl.replace(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001', '');
+      await api.patch(`/reports/${currentId}/attachment`, {
+        attachment_name: selectedFileName,
+        attachment_url: serverPath,
+      }).catch(console.error);
+    }
+
     // Nộp báo cáo
-    await reportApi.submitReport(String(reportId));
+    await reportApi.submitReport(currentId);
 
     toast.success("Nộp báo cáo thành công!");
     router.push("/dashboard/accidents-enterprise");
@@ -1590,31 +1638,33 @@ const handleFileChange = async (
       }
     );
 
-    const {
-      fileName,
-      filePath,
-    } = uploadRes.data.data;
+    const uploadData = uploadRes.data?.data || uploadRes.data || {};
+    const filePath = uploadData.filePath;
+    const fileName = uploadData.originalName || uploadData.fileName || uploadData.filename || file.name;
 
-    await api.patch(
-      `/reports/${reportId}/attachment`,
-      {
-        attachment_name: fileName,
-        attachment_url: filePath,
-      }
-    );
+    if (activeReportId && activeReportId !== 'new') {
+      await api.patch(
+        `/reports/${activeReportId}/attachment`,
+        {
+          attachment_name: fileName,
+          attachment_url: filePath,
+        }
+      );
+    }
 
-    if (fileUrl) URL.revokeObjectURL(fileUrl);
-
-    const objectUrl = URL.createObjectURL(file);
+    const fullUrl = filePath.startsWith('http')
+      ? filePath
+      : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${filePath}`;
 
     setSelectedFile(file);
     setSelectedFileName(fileName);
-    setFileUrl(objectUrl);
+    setFileUrl(fullUrl);
 
     toast.success("Đính kèm báo cáo thành công");
-  } catch (error) {
+  } catch (error: any) {
     console.error("Lỗi đính kèm file:", error);
-    toast.error("Đính kèm file thất bại");
+    const msg = error.response?.data?.message || "Đính kèm file thất bại";
+    toast.error(typeof msg === 'string' ? msg : "Đính kèm file thất bại");
   }
 };
 
@@ -1663,14 +1713,22 @@ const handleConfirmSubmit = async () => {
           ? ('12 months' as ReportPeriod)
           : ('6 months' as ReportPeriod);
 
-        await reportApi.saveStep1({
-          reportId: String(reportId),
+        const isNew = String(activeReportId) === 'new' || !activeReportId;
+        const resStep1 = await reportApi.saveStep1({
+          reportId: !isNew ? String(activeReportId) : undefined,
+          configId: configIdParam || undefined,
           year: Number(reportYear) || new Date().getFullYear(),
           period: periodVal,
           totalEmployees: Number(formData.companyInfo.totalEmployees) || 0,
           totalFemaleEmployees: Number(formData.companyInfo.totalFemaleEmployees) || 0,
           totalQuyLuong: parseMoney(formData.companyInfo.totalSalaryFund) || 0,
         });
+
+        const newId = String(resStep1.data?.reportId || resStep1.data?.data?.id || activeReportId);
+        if (newId && newId !== activeReportId) {
+          setActiveReportId(newId);
+          window.history.replaceState(null, '', `/dashboard/accidents-enterprise/edit/${newId}`);
+        }
       }
 
       if (currentStep === 2) {
@@ -1683,7 +1741,7 @@ const handleConfirmSubmit = async () => {
           }
         }
 
-        await reportApi.saveStep2Accident(String(reportId), {
+        await reportApi.saveStep2Accident(String(activeReportId), {
           totalAccident: Number(s.totalIncidents) || 0,
           totalAccidentDeath: Number(s.incidentsWithFatalities) || 0,
           totalHumanInjuredMore2: Number(s.incidentsWithMultipleVictims) || 0,
@@ -1734,7 +1792,7 @@ const handleConfirmSubmit = async () => {
           totalThietHai: parseMoney(detail.propertyDamage) || 0,
         }));
 
-        await reportApi.saveStep2Detail(String(reportId), { details: detailsPayload });
+        await reportApi.saveStep2Detail(String(activeReportId), { details: detailsPayload });
       }
 
       if (currentStep === 4) {
@@ -1744,7 +1802,7 @@ const handleConfirmSubmit = async () => {
         }
 
         const sub = formData.subsidizedStatistic;
-        await reportApi.saveStep3BenefitAccident(String(reportId), {
+        await reportApi.saveStep3BenefitAccident(String(activeReportId), {
           totalAccident: Number(sub.totalIncidents) || 0,
           totalAccidentDeath: Number(sub.incidentsWithFatalities) || 0,
           totalHumanInjuredMore2: Number(sub.incidentsWithMultipleVictims) || 0,
@@ -1778,7 +1836,7 @@ const handleConfirmSubmit = async () => {
   return (
     <div className="w-full h-full bg-[#F4F6F9] flex flex-col font-sans text-xs text-gray-700 select-none overflow-hidden min-h-screen">
       
-      <div className="bg-white px-5 py-3 flex items-center justify-between border-b border-gray-200 shadow-sm flex-shrink-0">
+      <div className="bg-white px-5 py-3 flex items-center justify-between border-b border-gray-200 shadow-sm flex-shrink-0 no-print">
         <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-gray-400">Tai nạn lao động</span>
             <span className="text-xs text-gray-400">❯</span>
@@ -1823,7 +1881,7 @@ const handleConfirmSubmit = async () => {
 
       <div className="p-6 space-y-4 flex-1 flex flex-col justify-start bg-white  ">
         
-        <div className="w-full">
+        <div className="w-full no-print">
           <label className="text-[11px] font-bold text-gray-400 block mb-1">Chọn mục báo cáo</label>
           <select 
             value={currentStep === 1 ? 'info' : currentStep === 2 ? 'general_sum' : currentStep === 3 ? 'general_detail' : currentStep === 4 ? 'subsidized' : 'report_sheet'}
@@ -2471,22 +2529,26 @@ const handleConfirmSubmit = async () => {
                 { key: 'totalCosts', label: 'Tổng số tiền chi phí' },
                 { key: 'totalDaysOff', label: 'Tổng số ngày nghỉ' },
                 { key: 'propertyDamage', label: 'Thiệt hại tài sản' },
-            ].map((item) => (
+            ].map((item) => {
+                const val = formData.subsidizedStatistic[item.key as keyof StatisticData];
+                const displayVal = val !== undefined && val !== null && val !== '' ? String(val) : '0';
+                return (
                 <div key={item.key} className="relative">
                 <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">{item.label} <span className="text-red-500">*</span></label>
                 <input 
                     type="text" 
                     readOnly={item.key === 'totalCosts'}
-                    value={formData.subsidizedStatistic[item.key as keyof StatisticData] || '0'} 
+                    value={displayVal} 
                     onChange={(e) => handleStep4Change(item.key as keyof StatisticData, e.target.value)} 
-                    className={`w-full p-2 border rounded-lg font-semibold pr-14 focus:outline-none focus:border-blue-500 ${item.key === 'totalCosts' ? 'bg-gray-50 text-gray-500' : 'border-gray-200'} ${errors[item.key as keyof FormErrorsState] ? 'border-red-500' : ''}`} 
+                    className={`w-full p-2 border rounded-lg font-semibold pr-14 focus:outline-none focus:border-blue-500 ${item.key === 'totalCosts' ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-200'} ${errors[item.key as keyof FormErrorsState] ? 'border-red-500' : ''}`} 
                 />
                 {errors[item.key as keyof FormErrorsState] && (
                     <span className="text-[10px] text-red-500 mt-1 block font-bold">{errors[item.key as keyof FormErrorsState]}</span>
                 )}
                 {item.key !== 'totalDaysOff' && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] text-gray-400 select-none">(1.000đ)</span>}
                 </div>
-              ))}
+              );
+            })}
             </div>
         </div>
         )}
@@ -2494,7 +2556,7 @@ const handleConfirmSubmit = async () => {
         
         {currentStep === 5 && (
         <div className="p-3 bg-white min-h-screen">
-            <div className="mb-6">
+            <div className="mb-6 no-print">
             <h2 className="text-sm font-bold text-gray-800 mb-2">
                 Báo cáo tổng hợp tình hình tai nạn lao động - Kỳ báo cáo: {periodName}
             </h2>
@@ -2504,7 +2566,7 @@ const handleConfirmSubmit = async () => {
             
             <button 
                 type="button"
-                onClick={() => fileInputRef.current?.click()} 
+                onClick={() => mainFileInputRef.current?.click()} 
                 className="text-blue-600 hover:underline font-semibold cursor-pointer"
             >
                 Tại đây
@@ -2512,9 +2574,12 @@ const handleConfirmSubmit = async () => {
             
             <input 
                 type="file" 
-                ref={fileInputRef} 
+                ref={mainFileInputRef} 
                 className="hidden" 
                 accept="application/pdf" 
+                onClick={(e) => {
+                  (e.target as HTMLInputElement).value = '';
+                }}
                 onChange={handleFileChange} 
             />
 
@@ -2590,17 +2655,20 @@ const handleConfirmSubmit = async () => {
 
                 <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="text-blue-600 hover:underline font-semibold"
+                    onClick={() => modalFileInputRef.current?.click()}
+                    className="text-blue-600 hover:underline font-semibold cursor-pointer"
                 >
                     Tại đây
                 </button>
 
                 <input
                     type="file"
-                    ref={fileInputRef}
+                    ref={modalFileInputRef}
                     className="hidden"
                     accept="application/pdf"
+                    onClick={(e) => {
+                      (e.target as HTMLInputElement).value = '';
+                    }}
                     onChange={handleFileChange}
                 />
 
@@ -2627,22 +2695,37 @@ const handleConfirmSubmit = async () => {
                 <ReportSheet report={mapFormDataToReportData()} />
             </div>
 
-            <div className="flex justify-end gap-3 px-4 py-3 border-t bg-white">
-                
-                <button
-                onClick={() => setShowPreviewModal(false)}
-                className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300"
-                >
-                Huỷ
-                </button>
+            <div className="flex items-center justify-between px-4 py-3 border-t bg-white">
+                <div>
+                  {!selectedFileName && !fileUrl && (
+                    <span className="text-amber-600 text-xs font-semibold">
+                      * Vui lòng đính kèm file báo cáo có dấu mộc công ty trước khi gửi.
+                    </span>
+                  )}
+                </div>
 
-                <button
-                onClick={handleSaveSubmit}
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-                >
-                Xác nhận gửi
-                </button>
+                <div className="flex gap-3">
+                  <button
+                  type="button"
+                  onClick={() => setShowPreviewModal(false)}
+                  className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 text-gray-700 font-semibold cursor-pointer"
+                  >
+                  Huỷ
+                  </button>
 
+                  <button
+                  type="button"
+                  disabled={!selectedFileName && !fileUrl}
+                  onClick={handleSaveSubmit}
+                  className={`px-4 py-2 rounded-md font-semibold transition-all ${
+                    !selectedFileName && !fileUrl
+                      ? 'bg-gray-300 text-gray-400 cursor-not-allowed'
+                      : 'bg-green-600 text-white hover:bg-green-700 cursor-pointer shadow-sm'
+                  }`}
+                  >
+                  Xác nhận gửi
+                  </button>
+                </div>
             </div>
 
             </div>
