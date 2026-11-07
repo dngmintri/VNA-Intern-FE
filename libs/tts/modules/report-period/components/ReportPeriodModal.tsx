@@ -7,6 +7,7 @@ import * as z from 'zod';
 import toast from 'react-hot-toast';
 import { api } from '@/libs/core/api/axios';
 import { AxiosError } from 'axios';
+import { reportApi } from '@/libs/tts/modules/accident/services/report.api';
 
 const reportPeriodSchema = z.object({
   reportName: z.string().min(1, { message: 'Tên báo cáo không được để trống' }),
@@ -14,18 +15,13 @@ const reportPeriodSchema = z.object({
   periodType: z.string().min(1, { message: 'Kỳ báo cáo không được để trống' }),
   startDate: z.string().min(1, { message: 'Ngày bắt đầu không được để trống' }),
   endDate: z.string().min(1, { message: 'Ngày kết thúc không được để trống' }),
-  dueDate: z.string().min(1, { message: 'Hạn chót nộp không được để trống' }),
+  dueDate: z.string().optional(),
   status: z.enum(['OPEN', 'CLOSED']),
 }).refine((data) => {
-  return new Date(data.startDate) < new Date(data.endDate);
+  return new Date(data.startDate) <= new Date(data.endDate);
 }, {
-  message: 'Ngày bắt đầu phải nhỏ hơn ngày kết thúc',
+  message: 'Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc',
   path: ['startDate'],
-}).refine((data) => {
-  return new Date(data.dueDate) >= new Date(data.endDate);
-}, {
-  message: 'Hạn nộp phải lớn hơn hoặc bằng ngày kết thúc kỳ báo cáo',
-  path: ['dueDate'],
 });
 
 type ReportPeriodFormInput = z.infer<typeof reportPeriodSchema>;
@@ -34,7 +30,7 @@ interface ReportPeriodModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  periodId: number | null;
+  periodId: string | number | null;
 }
 
 export const ReportPeriodModal: React.FC<ReportPeriodModalProps> = ({
@@ -106,12 +102,17 @@ export const ReportPeriodModal: React.FC<ReportPeriodModalProps> = ({
     if (isEdit && periodId && isOpen) {
       const fetchDetails = async () => {
         try {
-          const response = await api.get(`/report-periods/${periodId}`);
-          if (response.data?.data) {
-            const data = response.data.data;
-            
+          const response = await reportApi.getReportConfigById(String(periodId));
+          const data = response.data?.data || response.data;
+          if (data) {
             let guessedReportName = 'Báo cáo tai nạn lao động';
             let guessedPeriodType = 'Cả năm';
+
+            if (data.period === '6 months') {
+              guessedPeriodType = '6 tháng đầu năm';
+            } else if (data.period === '12 months') {
+              guessedPeriodType = 'Cả năm';
+            }
 
             if (data.name) {
               if (data.name.includes('6 tháng đầu năm')) {
@@ -134,14 +135,17 @@ export const ReportPeriodModal: React.FC<ReportPeriodModalProps> = ({
                 .trim();
             }
 
+            const rawStart = data.dateStart || data.startDate;
+            const rawEnd = data.dateEnd || data.endDate;
+
             reset({
               reportName: guessedReportName || 'Báo cáo tai nạn lao động',
               year: data.year,
               periodType: guessedPeriodType,
-              startDate: data.startDate ? data.startDate.split('T')[0] : '',
-              endDate: data.endDate ? data.endDate.split('T')[0] : '',
-              dueDate: data.dueDate ? data.dueDate.split('T')[0] : '',
-              status: data.status || 'OPEN',
+              startDate: rawStart ? String(rawStart).split('T')[0] : '',
+              endDate: rawEnd ? String(rawEnd).split('T')[0] : '',
+              dueDate: data.dueDate ? String(data.dueDate).split('T')[0] : (rawEnd ? String(rawEnd).split('T')[0] : ''),
+              status: (data.status === true || data.status === 'OPEN') ? 'OPEN' : 'CLOSED',
             });
           }
         } catch (error) {
@@ -169,30 +173,29 @@ export const ReportPeriodModal: React.FC<ReportPeriodModalProps> = ({
   };
 
   const onSubmit = async (values: ReportPeriodFormInput) => {
-    let quarter = 1;
-    if (values.periodType === '6 tháng đầu năm' || values.periodType === 'Quý 2') quarter = 2;
-    if (values.periodType === '6 tháng cuối năm' || values.periodType === 'Quý 3') quarter = 3;
-    if (values.periodType === 'Quý 4') quarter = 4;
+    const periodEnum = (values.periodType.includes('12') || values.periodType.includes('Cả năm'))
+      ? '12 months'
+      : '6 months';
 
     const name = `${values.reportName} ${values.periodType} năm ${values.year}`;
 
+    const finalDateEnd = values.dueDate || values.endDate;
+
     const payload = {
       name,
-      year: values.year,
-      quarter,
-      startDate: formatDateForBackend(values.startDate),
-      endDate: formatDateForBackend(values.endDate),
-      dueDate: formatDateForBackend(values.dueDate),
-      status: values.status,
+      year: Number(values.year),
+      period: periodEnum as any,
+      dateStart: formatDateForBackend(values.startDate),
+      dateEnd: formatDateForBackend(finalDateEnd),
+      status: values.status === 'OPEN',
     };
 
     try {
       if (isEdit) {
-        await api.patch(`/report-periods/${periodId}`, payload);
-        await api.patch(`/report-periods/${periodId}/delete`, { status: values.status });
+        await reportApi.updateReportConfig(String(periodId), payload);
         toast.success('Cập nhật cấu hình báo cáo thành công!');
       } else {
-        await api.post('/report-periods', payload);
+        await reportApi.createReportConfig(payload);
         toast.success('Thêm cấu hình báo cáo thành công!');
       }
       onSuccess();

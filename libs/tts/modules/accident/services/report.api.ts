@@ -1,7 +1,7 @@
 import { api } from '@/libs/core/api/axios';
 
 export type ReportPeriod = '6 months' | '12 months';
-export type ReportStatus = 'reporting' | 'received' | 'pending';
+export type ReportStatus = 'reporting' | 'received' | 'approved' | 'rejected' | 'pending';
 
 export interface BusinessInfoForReport {
   id: string;
@@ -28,6 +28,7 @@ export interface ReportItem {
   totalQuyLuong?: number;
   attachmentUrl?: string | null;
   attachmentName?: string | null;
+  note?: string | null;
   createdAt: string;
   updatedAt: string;
   business?: {
@@ -165,7 +166,14 @@ export const reportApi = {
     api.delete<any>(`/reports/${reportId}`),
 
   // === ROLE SỞ (ADMIN) ===
-  getReportsByYear: (params: { year: number; pageNumber?: number; pageSize?: number }) =>
+  getReportsByYear: (params: {
+    year: number;
+    status?: ReportStatus;
+    period?: ReportPeriod;
+    search?: string;
+    pageNumber?: number;
+    pageSize?: number;
+  }) =>
     api.get<any>('/reports/by-year', { params }),
 
   getOverview: (year: number, period?: ReportPeriod) =>
@@ -175,8 +183,38 @@ export const reportApi = {
     api.get<any>('/reports/accident-statistics', { params: { year, period } }),
 
   // Cấu hình kỳ báo cáo
-  createReportConfig: (payload: { year: number; period: ReportPeriod; name: string; dateStart: string; dateEnd: string }) =>
-    api.post<any>('/report-configs', payload),
+  getReportConfigs: (params?: {
+    year?: number;
+    period?: ReportPeriod;
+    status?: boolean;
+    search?: string;
+    pageNumber?: number;
+    pageSize?: number;
+  }) => api.get<any>('/report-configs', { params }),
+
+  getReportConfigById: (id: string) =>
+    api.get<any>(`/report-configs/${id}`),
+
+  createReportConfig: (payload: {
+    year: number;
+    period: ReportPeriod;
+    name: string;
+    dateStart: string;
+    dateEnd: string;
+    status?: boolean;
+  }) => api.post<any>('/report-configs', payload),
+
+  updateReportConfig: (
+    id: string,
+    payload: {
+      name?: string;
+      year?: number;
+      period?: ReportPeriod;
+      dateStart?: string;
+      dateEnd?: string;
+      status?: boolean;
+    },
+  ) => api.patch<any>(`/report-configs/${id}`, payload),
 
   updateReportConfigStatus: (id: string, status: boolean) =>
     api.patch<any>(`/report-configs/configs/${id}/status`, { status }),

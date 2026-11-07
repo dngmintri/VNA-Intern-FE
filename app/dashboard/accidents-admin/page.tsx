@@ -1,7 +1,15 @@
 'use client';
 
 import React from 'react';
-import { AccidentAdmin } from '@/libs/tts/modules/accident/admin';
+import dynamic from 'next/dynamic';
+
+const AccidentAdmin = dynamic(
+  () =>
+    import('@/libs/tts/modules/accident/admin').then(
+      (mod) => mod.AccidentAdmin
+    ),
+  { ssr: false }
+);
 
 export default function AccidentsAdminPage() {
   return (

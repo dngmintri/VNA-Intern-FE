@@ -114,6 +114,8 @@ export const Enterprise: React.FC = () => {
                   const isPending = item.status === 'pending';
                   const isDraft = item.status === 'reporting';
                   const isReceived = item.status === 'received';
+                  const isApproved = item.status === 'approved';
+                  const isRejected = item.status === 'rejected';
                   const periodLabel = item.period === '6 months' ? '6 tháng đầu năm' : 'Cả năm (12 tháng)';
 
                   return (
@@ -141,10 +143,10 @@ export const Enterprise: React.FC = () => {
                             </span>
                           )}
 
-                          {/* Chỉnh sửa / Bắt đầu nhập (Khi đang chờ báo cáo hoặc đang lập báo cáo) */}
-                          {(isPending || isDraft) && (
+                          {/* Chỉnh sửa / Bắt đầu nhập (Khi đang chờ báo cáo, đang lập báo cáo hoặc bị từ chối) */}
+                          {(isPending || isDraft || isRejected) && (
                             <button
-                              title={isPending ? 'Bắt đầu lập báo cáo' : 'Chỉnh sửa số liệu'}
+                              title={isPending ? 'Bắt đầu lập báo cáo' : isRejected ? 'Chỉnh sửa lại số liệu (Bị từ chối)' : 'Chỉnh sửa số liệu'}
                               onClick={() => {
                                 if (item.id) {
                                   router.push(`/dashboard/accidents-enterprise/edit/${item.id}`);
@@ -183,10 +185,23 @@ export const Enterprise: React.FC = () => {
                               ? 'bg-blue-50 text-blue-600 border-blue-200'
                               : isDraft
                               ? 'bg-amber-50 text-amber-600 border-amber-200'
+                              : isApproved
+                              ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                              : isRejected
+                              ? 'bg-red-50 text-red-600 border-red-200'
                               : 'bg-emerald-50 text-emerald-600 border-emerald-200'
                           }`}
+                          title={isRejected && item.note ? `Lý do từ chối: ${item.note}` : undefined}
                         >
-                          {isPending ? 'Chờ báo cáo' : isDraft ? 'Đang lập báo cáo' : 'Đã tiếp nhận'}
+                          {isPending
+                            ? 'Chờ báo cáo'
+                            : isDraft
+                            ? 'Đang lập báo cáo'
+                            : isApproved
+                            ? 'Đã duyệt'
+                            : isRejected
+                            ? 'Từ chối'
+                            : 'Đã tiếp nhận'}
                         </span>
                       </td>
                     </tr>
