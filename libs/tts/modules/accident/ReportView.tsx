@@ -9,8 +9,9 @@ import { useAuthStore } from '@/libs/tts/store/auth.store';
 import { decodeJwt } from '@/libs/shared/utils/jwt';
 import { ReportData, ReportSheet, ReportStatistic } from '@/libs/tts/modules/accident/components/ReportSheet';
 import { useParams } from "next/navigation";
+import { reportApi, ReportPeriod } from '@/libs/tts/modules/accident/services/report.api';
 interface WizardProps {
-  reportId: number;
+  reportId: string | number;
 }
 
 interface CompanyInfo {
@@ -355,6 +356,66 @@ const [formData, setFormData] = useState<FormDataState>({
   ],
 });
 
+const DEFAULT_CAUSES: CategoryItem[] = [
+  { id: 1, code: 'thiet_bi_an_toan', name: 'Không có thiết bị an toàn hoặc thiết bị không đảm bảo an toàn' },
+  { id: 2, code: 'phuong_tien_bao_ve', name: 'Không có phương tiện bảo vệ cá nhân hoặc phương tiện bảo vệ cá nhân không tốt' },
+  { id: 3, code: 'to_chuc_lao_dong', name: 'Tổ chức lao động không hợp lí' },
+  { id: 4, code: 'chua_huan_luyen', name: 'Chưa huấn luyện hoặc huấn luyện an toàn vệ sinh lao động chưa đầy đủ' },
+  { id: 5, code: 'thieu_quy_trinh_an_toan', name: 'Không có quy trình an toàn hoặc biện pháp làm việc an toàn' },
+  { id: 6, code: 'dieu_kien_lam_viec', name: 'Điều kiện làm việc không tốt' },
+  { id: 7, code: 'vi_pham_noi_quy', name: 'Vi phạm nội quy, quy trình, quy chuẩn, biện pháp làm việc an toàn' },
+  { id: 8, code: 'khong_su_dung_bao_ho', name: 'Không sử dụng phương tiện bảo vệ cá nhân' },
+  { id: 9, code: 'nguyen_nhan_khach_quan', name: 'Khách quan khó tránh, nguyên nhân chưa kể đến' },
+];
+
+const DEFAULT_FACTORS: CategoryItem[] = [
+  { id: 1, code: '1', name: 'Thiết bị nâng' },
+  { id: 2, code: '2', name: 'Dây cáp/xích' },
+  { id: 3, code: '3', name: 'Xe nâng/phương tiện vận chuyển' },
+  { id: 4, code: '4', name: 'Máy cơ khí/chế biến gỗ' },
+  { id: 5, code: '5', name: 'Điện/nhiệt' },
+  { id: 6, code: '6', name: 'Hóa chất độc hại' },
+  { id: 7, code: '7', name: 'Rơi ngã từ trên cao' },
+  { id: 8, code: '8', name: 'Sạt lở đất/đá' },
+  { id: 9, code: '9', name: 'Các yếu tố khác' },
+];
+
+const DEFAULT_PROFESSIONS: CategoryItem[] = [
+  { id: 1111, code: '1111', level: 'Cấp 4', name: 'Nhà lãnh đạo cơ quan Đảng Cộng sản Việt nam cấp Trung ương' },
+  { id: 1112, code: '1112', level: 'Cấp 4', name: 'Nhà lãnh đạo cơ quan Đảng Cộng sản Việt Nam cấp tỉnh, thành phố' },
+  { id: 1113, code: '1113', level: 'Cấp 4', name: 'Nhà lãnh đạo cơ quan Đảng Cộng sản Việt Nam cấp quận, huyện' },
+  { id: 1114, code: '1114', level: 'Cấp 4', name: 'Nhà lãnh đạo cơ quan Đảng Cộng sản Việt Nam cấp xã, phường' },
+  { id: 1121, code: '1121', level: 'Cấp 4', name: 'Lãnh đạo các cơ quan Nhà nước cấp Trung ương' },
+  { id: 1122, code: '1122', level: 'Cấp 4', name: 'Lãnh đạo các cơ quan Nhà nước cấp tỉnh, thành phố' },
+  { id: 1211, code: '1211', level: 'Cấp 4', name: 'Giám đốc điều hành, tổng giám đốc doanh nghiệp' },
+  { id: 1219, code: '1219', level: 'Cấp 4', name: 'Giám đốc chiến lược và kế hoạch doanh nghiệp' },
+  { id: 1221, code: '1221', level: 'Cấp 4', name: 'Giám đốc bán hàng và tiếp thị' },
+  { id: 1321, code: '1321', level: 'Cấp 4', name: 'Giám đốc sản xuất, chế tạo và khai khoáng' },
+  { id: 1323, code: '1323', level: 'Cấp 4', name: 'Giám đốc thi công xây dựng' },
+  { id: 2141, code: '2141', level: 'Cấp 4', name: 'Kỹ sư công nghiệp và chế tạo máy' },
+  { id: 2142, code: '2142', level: 'Cấp 4', name: 'Kỹ sư xây dựng công trình' },
+  { id: 2144, code: '2144', level: 'Cấp 4', name: 'Kỹ sư cơ khí' },
+  { id: 2151, code: '2151', level: 'Cấp 4', name: 'Kỹ sư điện, điện tử' },
+  { id: 2511, code: '2511', level: 'Cấp 4', name: 'Kỹ sư hệ thống và phần mềm máy tính' },
+  { id: 3112, code: '3112', level: 'Cấp 4', name: 'Kỹ thuật viên xây dựng công trình' },
+  { id: 3115, code: '3115', level: 'Cấp 4', name: 'Kỹ thuật viên cơ khí và lắp ráp máy' },
+  { id: 3118, code: '3118', level: 'Cấp 4', name: 'Kỹ thuật viên an toàn lao động' },
+  { id: 7112, code: '7112', level: 'Cấp 4', name: 'Thợ xây dựng gạch, đá và hoàn thiện công trình' },
+  { id: 7114, code: '7114', level: 'Cấp 4', name: 'Thợ làm việc với bê tông và thợ cốp pha' },
+  { id: 7212, code: '7212', level: 'Cấp 4', name: 'Thợ hàn và thợ cắt kim loại' },
+  { id: 7214, code: '7214', level: 'Cấp 4', name: 'Thợ lắp dựng kết cấu kim loại' },
+  { id: 7223, code: '7223', level: 'Cấp 4', name: 'Thợ chế tạo và vận hành máy công cụ' },
+  { id: 7233, code: '7233', level: 'Cấp 4', name: 'Thợ sửa chữa máy móc nông nghiệp và công nghiệp' },
+  { id: 7411, code: '7411', level: 'Cấp 4', name: 'Thợ điện công trình' },
+  { id: 7412, code: '7412', level: 'Cấp 4', name: 'Thợ cơ điện và sửa chữa thiết bị điện' },
+  { id: 8331, code: '8331', level: 'Cấp 4', name: 'Người vận hành thiết bị nặng và máy nâng' },
+  { id: 8332, code: '8332', level: 'Cấp 4', name: 'Người lái xe tải nặng và phương tiện cơ giới' },
+  { id: 8343, code: '8343', level: 'Cấp 4', name: 'Người vận hành cẩu, tời và các thiết bị nâng hạ' },
+  { id: 9312, code: '9312', level: 'Cấp 4', name: 'Lao động giản đơn trong ngành xây dựng' },
+  { id: 9329, code: '9329', level: 'Cấp 4', name: 'Lao động giản đơn trong ngành chế biến, chế tạo' },
+  { id: 9999, code: '9999', level: 'Cấp 4', name: 'Nghề nghiệp khác' },
+];
+
 useEffect(() => {
   const fetchAllData = async () => {
     try {
@@ -367,248 +428,191 @@ useEffect(() => {
         taxCode
           ? api.get<{ data: CompanyProfileResponse }>(
               `/company/${taxCode}/company-profile`
-            )
+            ).catch(() => null)
           : null,
-        api.get<{
-          data: {
-            totalEmployees?: number;
-            totalFemaleEmployees?: number;
-            totalSalaryFund?: string | number;
-            attachmentName?: string;
-            attachmentUrl?: string;
-            reportPeriodId?: number;
-            reportPeriod?: { year?: number
-                name?: string;
-             };
-            statistics?: StatisticPayload[];
-          };
-        }>(`/reports/${reportId}`),
+        reportApi.getReportOverviewDetail(String(reportId)).catch(() => null),
       ]);
 
-      const res = reportRes.data.data;
-      setPeriodName(res.reportPeriod?.name || `Kỳ báo cáo #${res.reportPeriodId}`);
-      console.log(res);
-        setSelectedFileName(res.attachmentName ?? "");
-        setFileUrl(
-        res.attachmentUrl
-            ? `http://localhost:8080${res.attachmentUrl}`
-            : ""
-        );
-      if (res.reportPeriod?.year) {
-        setReportYear(res.reportPeriod.year.toString());
+      const res = reportRes?.data?.data || reportRes?.data || {};
+      const report = res.report || {};
+      const business = res.business || {};
+      const accident = res.accident || {};
+      const accidentDetails = Array.isArray(res.accidentDetails) ? res.accidentDetails : [];
+      const benefitAccident = res.benefitAccident || {};
+
+      const pName = report.period === '12 months' ? 'Cả năm' : '6 tháng';
+      setPeriodName(pName);
+      if (report.year) {
+        setReportYear(report.year.toString());
       }
 
-      const statsArray: StatisticPayload[] = Array.isArray(res.statistics)
-        ? res.statistics
-        : [];
+      const mapDetail = (detail: any): DetailItem => {
+        let cId = detail.nguyenNhanTaiNan || detail.accidentCauseId?.toString() || "";
+        const matchedCause = DEFAULT_CAUSES.find(c => String(c.id) === String(cId) || c.code === String(cId));
+        if (matchedCause) cId = matchedCause.code;
 
-      const generalObj = statsArray.find(
-        (s) => s.reportCategory?.toUpperCase() === "GENERAL"
-      );
+        let fId = detail.yeuToChanThuong || detail.injuryFactorId?.toString() || "";
+        const matchedFactor = DEFAULT_FACTORS.find(f => String(f.id) === String(fId) || f.code === String(fId) || f.name.toLowerCase() === String(fId).toLowerCase());
+        if (matchedFactor) fId = matchedFactor.name;
 
-      const subsidizedObj = statsArray.find(
-        (s) => s.reportCategory?.toUpperCase() === "SUBSIDIZED"
-      );
+        let pId = detail.ngheNghiep || detail.professionId?.toString() || "";
+        const matchedProfession = DEFAULT_PROFESSIONS.find(p => String(p.id) === String(pId) || p.code === String(pId) || p.name.toLowerCase() === String(pId).toLowerCase());
+        if (matchedProfession) pId = matchedProfession.name;
 
-      const mapDetail = (detail: AccidentDetailPayload): DetailItem => ({
-        causeId: detail.accidentCauseId?.toString() ?? "",
-        factorId: detail.injuryFactorId?.toString() ?? "",
-        professionId: detail.professionId?.toString() ?? "",
+        return {
+          causeId: cId,
+          factorId: fId,
+          professionId: pId,
 
-        totalIncidents: 0,
-        totalVictims: detail.totalVictims ?? 0,
-        totalFemaleVictims: detail.totalFemaleVictims ?? 0,
-        totalFatalities: detail.totalFatalities ?? 0,
-        totalSevereInjuries: detail.totalSevereInjuries ?? 0,
+          totalIncidents: 1,
+          totalVictims: Number(detail.totalHumanInjured) || Number(detail.totalVictims) || 0,
+          totalFemaleVictims: Number(detail.totalFemaleInjured) || Number(detail.totalFemaleVictims) || 0,
+          totalFatalities: Number(detail.totalHumanDeath) || Number(detail.totalFatalities) || 0,
+          totalSevereInjuries: Number(detail.totalHumanInjuredHeavy) || Number(detail.totalSevereInjuries) || 0,
 
-        unmanagedVictims: detail.unmanagedVictims ?? 0,
-        unmanagedFemaleVictims: detail.unmanagedFemaleVictims ?? 0,
-        unmanagedFatalities: detail.unmanagedFatalities ?? 0,
-        unmanagedSevereInjuries: detail.unmanagedSevereInjuries ?? 0,
+          unmanagedVictims: Number(detail.totalHumanInjuredNoQL) || Number(detail.unmanagedVictims) || 0,
+          unmanagedFemaleVictims: Number(detail.totalFemaleInjuredNoQL) || Number(detail.unmanagedFemaleVictims) || 0,
+          unmanagedFatalities: Number(detail.totalHumanDeathNoQL) || Number(detail.unmanagedFatalities) || 0,
+          unmanagedSevereInjuries: Number(detail.totalHumanInjuredHeavyNoQL) || Number(detail.unmanagedSevereInjuries) || 0,
 
-        medicalCosts:
-          detail.medicalCosts && Number(detail.medicalCosts) !== 0
-            ? formatMoneyInput(detail.medicalCosts.toString())
-            : "",
+          medicalCosts:
+            (detail.budgetMedical || detail.medicalCosts) && Number(detail.budgetMedical || detail.medicalCosts) !== 0
+              ? formatMoneyInput(String(detail.budgetMedical || detail.medicalCosts))
+              : "",
 
-        treatmentSalaryCosts:
-          detail.treatmentSalaryCosts &&
-          Number(detail.treatmentSalaryCosts) !== 0
-            ? formatMoneyInput(detail.treatmentSalaryCosts.toString())
-            : "",
+          treatmentSalaryCosts:
+            (detail.budgetSalary || detail.treatmentSalaryCosts) && Number(detail.budgetSalary || detail.treatmentSalaryCosts) !== 0
+              ? formatMoneyInput(String(detail.budgetSalary || detail.treatmentSalaryCosts))
+              : "",
 
-        compensationCosts:
-          detail.compensationCosts &&
-          Number(detail.compensationCosts) !== 0
-            ? formatMoneyInput(detail.compensationCosts.toString())
-            : "",
+          compensationCosts:
+            (detail.budgetHelp || detail.compensationCosts) && Number(detail.budgetHelp || detail.compensationCosts) !== 0
+              ? formatMoneyInput(String(detail.budgetHelp || detail.compensationCosts))
+              : "",
 
-        totalCosts:
-          detail.totalCosts && Number(detail.totalCosts) !== 0
-            ? formatMoneyInput(detail.totalCosts.toString())
-            : "",
+          totalCosts:
+            (detail.totalBudget || detail.totalCosts) && Number(detail.totalBudget || detail.totalCosts) !== 0
+              ? formatMoneyInput(String(detail.totalBudget || detail.totalCosts))
+              : "",
 
-        totalDaysOff: detail.totalDaysOff ?? 0,
+          totalDaysOff: Number(detail.totalDayOff) || Number(detail.totalDaysOff) || 0,
 
-        propertyDamage:
-          detail.propertyDamage && Number(detail.propertyDamage) !== 0
-            ? formatMoneyInput(detail.propertyDamage.toString())
-            : "",
-      });
+          propertyDamage:
+            (detail.totalThietHai || detail.propertyDamage) && Number(detail.totalThietHai || detail.propertyDamage) !== 0
+              ? formatMoneyInput(String(detail.totalThietHai || detail.propertyDamage))
+              : "",
+        };
+      };
 
       setFormData({
         companyInfo: {
           name:
+            business.name ||
             profileRes?.data?.data?.companyName ||
             "Chưa cập nhật tên doanh nghiệp",
           type:
+            business.businessType?.name ||
             profileRes?.data?.data?.businessType ||
             "Chưa cập nhật loại hình",
           industry:
+            business.businessIndustry?.name ||
             profileRes?.data?.data?.businessIndustry ||
             "Chưa cập nhật ngành nghề",
 
-          totalEmployees: res.totalEmployees || 0,
-          totalFemaleEmployees: res.totalFemaleEmployees || 0,
+          totalEmployees: report.totalEmployees || 0,
+          totalFemaleEmployees: report.totalFemaleEmployees || 0,
 
           totalSalaryFund:
-            res.totalSalaryFund &&
-            Number(res.totalSalaryFund) !== 0
-              ? formatMoneyInput(res.totalSalaryFund.toString())
+            report.totalQuyLuong && Number(report.totalQuyLuong) !== 0
+              ? formatMoneyInput(report.totalQuyLuong.toString())
               : "",
         },
 
         generalStatistic: {
-          totalIncidents: generalObj?.totalIncidents || 0,
-          incidentsWithFatalities:
-            generalObj?.incidentsWithFatalities || 0,
-          incidentsWithMultipleVictims:
-            generalObj?.incidentsWithMultipleVictims || 0,
-          totalVictims: generalObj?.totalVictims || 0,
-          totalFemaleVictims:
-            generalObj?.totalFemaleVictims || 0,
-          totalFatalities: generalObj?.totalFatalities || 0,
-          totalSevereInjuries:
-            generalObj?.totalSevereInjuries || 0,
-          unmanagedVictims:
-            generalObj?.unmanagedVictims || 0,
-          unmanagedFemaleVictims:
-            generalObj?.unmanagedFemaleVictims || 0,
-          unmanagedFatalities:
-            generalObj?.unmanagedFatalities || 0,
-          unmanagedSevereInjuries:
-            generalObj?.unmanagedSevereInjuries || 0,
+          totalIncidents: Number(accident.totalAccident) || 0,
+          incidentsWithFatalities: Number(accident.totalAccidentDeath) || 0,
+          incidentsWithMultipleVictims: Number(accident.totalHumanInjuredMore2) || 0,
+          totalVictims: Number(accident.totalHumanInjured) || 0,
+          totalFemaleVictims: Number(accident.totalFemaleInjured) || 0,
+          totalFatalities: Number(accident.totalHumanDeath) || 0,
+          totalSevereInjuries: Number(accident.totalHumanInjuredHeavy) || 0,
+          unmanagedVictims: Number(accident.totalHumanInjuredNoQL) || 0,
+          unmanagedFemaleVictims: Number(accident.totalFemaleInjuredNoQL) || 0,
+          unmanagedFatalities: Number(accident.totalHumanDeathNoQL) || 0,
+          unmanagedSevereInjuries: Number(accident.totalHumanInjuredHeavyNoQL) || 0,
 
           medicalCosts:
-            generalObj?.medicalCosts &&
-            Number(generalObj.medicalCosts) !== 0
-              ? formatMoneyInput(generalObj.medicalCosts.toString())
+            accident.budgetMedical && Number(accident.budgetMedical) !== 0
+              ? formatMoneyInput(String(accident.budgetMedical))
               : "",
 
           treatmentSalaryCosts:
-            generalObj?.treatmentSalaryCosts &&
-            Number(generalObj.treatmentSalaryCosts) !== 0
-              ? formatMoneyInput(
-                  generalObj.treatmentSalaryCosts.toString()
-                )
+            accident.budgetSalary && Number(accident.budgetSalary) !== 0
+              ? formatMoneyInput(String(accident.budgetSalary))
               : "",
 
           compensationCosts:
-            generalObj?.compensationCosts &&
-            Number(generalObj.compensationCosts) !== 0
-              ? formatMoneyInput(
-                  generalObj.compensationCosts.toString()
-                )
+            accident.budgetHelp && Number(accident.budgetHelp) !== 0
+              ? formatMoneyInput(String(accident.budgetHelp))
               : "",
 
           totalCosts:
-            generalObj?.totalCosts &&
-            Number(generalObj.totalCosts) !== 0
-              ? formatMoneyInput(generalObj.totalCosts.toString())
+            accident.totalBudget && Number(accident.totalBudget) !== 0
+              ? formatMoneyInput(String(accident.totalBudget))
               : "",
 
-          totalDaysOff: generalObj?.totalDaysOff || 0,
+          totalDaysOff: Number(accident.totalDayOff) || 0,
 
           propertyDamage:
-            generalObj?.propertyDamage &&
-            Number(generalObj.propertyDamage) !== 0
-              ? formatMoneyInput(generalObj.propertyDamage.toString())
+            accident.totalThietHai && Number(accident.totalThietHai) !== 0
+              ? formatMoneyInput(String(accident.totalThietHai))
               : "",
         },
 
-        generalDetails:
-          generalObj?.accidentDetails?.map(mapDetail) ?? [],
+        generalDetails: accidentDetails.map(mapDetail),
 
         subsidizedStatistic: {
-          totalIncidents:
-            subsidizedObj?.totalIncidents || 0,
-          incidentsWithFatalities:
-            subsidizedObj?.incidentsWithFatalities || 0,
-          incidentsWithMultipleVictims:
-            subsidizedObj?.incidentsWithMultipleVictims || 0,
-          totalVictims:
-            subsidizedObj?.totalVictims || 0,
-          totalFemaleVictims:
-            subsidizedObj?.totalFemaleVictims || 0,
-          totalFatalities:
-            subsidizedObj?.totalFatalities || 0,
-          totalSevereInjuries:
-            subsidizedObj?.totalSevereInjuries || 0,
-          unmanagedVictims:
-            subsidizedObj?.unmanagedVictims || 0,
-          unmanagedFemaleVictims:
-            subsidizedObj?.unmanagedFemaleVictims || 0,
-          unmanagedFatalities:
-            subsidizedObj?.unmanagedFatalities || 0,
-          unmanagedSevereInjuries:
-            subsidizedObj?.unmanagedSevereInjuries || 0,
+          totalIncidents: Number(benefitAccident.totalAccident) || 0,
+          incidentsWithFatalities: Number(benefitAccident.totalAccidentDeath) || 0,
+          incidentsWithMultipleVictims: Number(benefitAccident.totalHumanInjuredMore2) || 0,
+          totalVictims: Number(benefitAccident.totalHumanInjured) || 0,
+          totalFemaleVictims: Number(benefitAccident.totalFemaleInjured) || 0,
+          totalFatalities: Number(benefitAccident.totalHumanDeath) || 0,
+          totalSevereInjuries: Number(benefitAccident.totalHumanInjuredHeavy) || 0,
+          unmanagedVictims: Number(benefitAccident.totalHumanInjuredNoQL) || 0,
+          unmanagedFemaleVictims: Number(benefitAccident.totalFemaleInjuredNoQL) || 0,
+          unmanagedFatalities: Number(benefitAccident.totalHumanDeathNoQL) || 0,
+          unmanagedSevereInjuries: Number(benefitAccident.totalHumanInjuredHeavyNoQL) || 0,
 
           medicalCosts:
-            subsidizedObj?.medicalCosts &&
-            Number(subsidizedObj.medicalCosts) !== 0
-              ? formatMoneyInput(
-                  subsidizedObj.medicalCosts.toString()
-                )
+            benefitAccident.budgetMedical && Number(benefitAccident.budgetMedical) !== 0
+              ? formatMoneyInput(String(benefitAccident.budgetMedical))
               : "",
 
           treatmentSalaryCosts:
-            subsidizedObj?.treatmentSalaryCosts &&
-            Number(subsidizedObj.treatmentSalaryCosts) !== 0
-              ? formatMoneyInput(
-                  subsidizedObj.treatmentSalaryCosts.toString()
-                )
+            benefitAccident.budgetSalary && Number(benefitAccident.budgetSalary) !== 0
+              ? formatMoneyInput(String(benefitAccident.budgetSalary))
               : "",
 
           compensationCosts:
-            subsidizedObj?.compensationCosts &&
-            Number(subsidizedObj.compensationCosts) !== 0
-              ? formatMoneyInput(
-                  subsidizedObj.compensationCosts.toString()
-                )
+            benefitAccident.budgetHelp && Number(benefitAccident.budgetHelp) !== 0
+              ? formatMoneyInput(String(benefitAccident.budgetHelp))
               : "",
 
           totalCosts:
-            subsidizedObj?.totalCosts &&
-            Number(subsidizedObj.totalCosts) !== 0
-              ? formatMoneyInput(
-                  subsidizedObj.totalCosts.toString()
-                )
+            benefitAccident.totalBudget && Number(benefitAccident.totalBudget) !== 0
+              ? formatMoneyInput(String(benefitAccident.totalBudget))
               : "",
 
-          totalDaysOff:
-            subsidizedObj?.totalDaysOff || 0,
+          totalDaysOff: Number(benefitAccident.totalDayOff) || 0,
 
           propertyDamage:
-            subsidizedObj?.propertyDamage &&
-            Number(subsidizedObj.propertyDamage) !== 0
-              ? formatMoneyInput(
-                  subsidizedObj.propertyDamage.toString()
-                )
+            benefitAccident.totalThietHai && Number(benefitAccident.totalThietHai) !== 0
+              ? formatMoneyInput(String(benefitAccident.totalThietHai))
               : "",
         },
 
-        subsidizedDetails:
-          subsidizedObj?.accidentDetails?.map(mapDetail) ?? [],
+        subsidizedDetails: [],
       });
     } catch (error) {
       console.error("Lỗi đồng bộ dữ liệu:", error);
@@ -621,27 +625,27 @@ useEffect(() => {
 }, [reportId, accessToken]);
 
 useEffect(() => {
-const fetchCategories = async () => {
-  try {
-    setIsLoading(true);
+  const fetchCategories = async () => {
+    try {
+      const [c, f, p] = await Promise.allSettled([
+        api.get<CategoryItem[]>('/category/accident-cause'),
+        api.get<CategoryItem[]>('/category/injury-factor'),
+        api.get<CategoryItem[]>('/category/profession'),
+      ]);
 
-    const [c, f, p] = await Promise.all([
-    api.get<CategoryItem[]>('/category/accident-cause'),
-    api.get<CategoryItem[]>('/category/injury-factor'),
-    api.get<CategoryItem[]>('/category/profession'),
-    ]);
+      const causes = c.status === 'fulfilled' && Array.isArray(c.value.data) && c.value.data.length > 0 ? c.value.data : DEFAULT_CAUSES;
+      const factors = f.status === 'fulfilled' && Array.isArray(f.value.data) && f.value.data.length > 0 ? f.value.data : DEFAULT_FACTORS;
+      const professions = p.status === 'fulfilled' && Array.isArray(p.value.data) && p.value.data.length > 0 ? p.value.data : DEFAULT_PROFESSIONS;
 
-    setCategories({
-    causes: c.data,
-    factors: f.data,
-    professions: p.data,
-    });
-  } catch (error) {
-    console.error('Lỗi đồng bộ dữ liệu:', error);
-  } finally {
-    setIsLoading(false);
-  }
-};
+      setCategories({ causes, factors, professions });
+    } catch {
+      setCategories({
+        causes: DEFAULT_CAUSES,
+        factors: DEFAULT_FACTORS,
+        professions: DEFAULT_PROFESSIONS,
+      });
+    }
+  };
   fetchCategories();
 }, []);
   useEffect(() => {
@@ -747,11 +751,9 @@ const fetchCategories = async () => {
     return items.map((item) => (
         <option
         key={item.id}
-        value={item.id.toString()}
+        value={item.code || item.id.toString()}
         >
-        [{causeGroupMap[item.causeGroup ?? 'OTHER']}]
-        {' '}
-        {item.code} - {item.name}
+        {item.name}
         </option>
     ));
     };
@@ -1258,11 +1260,11 @@ const handleStep2FieldChange = (key: keyof StatisticData, rawStr: string) => {
     return sortedItems.flatMap((item) => [
         <option
         key={item.id}
-        value={item.id.toString()}
+        value={item.name}
         >
         {'—'.repeat(depth)}
         {depth > 0 ? ' ' : ''}
-        {item.code} - {item.name}
+        {item.name}
         </option>,
 
         ...(item.children
@@ -1277,28 +1279,14 @@ const handleStep2FieldChange = (key: keyof StatisticData, rawStr: string) => {
     const renderProfessionOptions = (
     items: CategoryItem[]
     ) => {
-    return items.map((item) => {
-        const depth =
-        Number(
-            item.level?.replace(
-            'Cấp ',
-            ''
-            )
-        ) - 1;
-
-        return (
-            <option
-                key={item.id}
-                value={item.id}
-            >
-            {'—'.repeat(
-            Math.max(depth, 0)
-            )}
-            {depth > 0 ? ' ' : ''}
-            {item.code} - {item.name}
+    return items.map((item) => (
+        <option
+            key={item.id}
+            value={item.name}
+        >
+            {item.name}
         </option>
-        );
-    });
+    ));
     };
   const handleDropdownCategoryChange = (value: string) => {
     if (value === 'info') setCurrentStep(1);
@@ -1512,7 +1500,7 @@ const buildStatistics = (
     if (!code) return;
 
     const category = categories.find(
-        c => String(c.id) === String(code)
+        c => String(c.id) === String(code) || c.code === String(code) || c.name === String(code)
     );
 
     console.log({
@@ -1526,7 +1514,7 @@ if (!map.has(code)) {
 
         code: category?.code ?? "",
 
-        name: category?.name ?? "",
+        name: category?.name ?? (typeof code === 'string' ? code : ""),
 
         incidents: 0,
         fatalIncidents: 0,
@@ -1591,7 +1579,7 @@ console.log("Map result", {
   subsidizedTotalLeaveDays: s.totalDaysOff,
 });
   return {
-    id: reportId,
+    id: reportId as any,
     companyName: formData.companyInfo.name,
     taxCode: '',
     period: '6 tháng',

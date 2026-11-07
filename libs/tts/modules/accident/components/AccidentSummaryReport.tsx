@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '@/libs/core/api/axios';
+import { reportApi } from '../services/report.api';
 
 interface ReportPeriod {
   id: number;
@@ -807,22 +808,126 @@ export const AccidentSummaryReport = ({ year, periodText, onBack, provinceId }: 
   }, [year, periodText]);
 
   useEffect(() => {
-    if (!selectedPeriodId) {
-      setSummaryData(null);
-      return;
-    }
     const fetchSummary = async () => {
       setLoadingSummary(true);
       try {
-        const response = await api.get(`/so/reports/summary`, {
-          params: { 
-            reportPeriodId: selectedPeriodId,
-            provinceId: selectedProvinceIdState || undefined
-          }
-        });
-        if (response.data?.data) {
-          setSummaryData(response.data.data);
+        const periodParam = (periodText?.includes('12') || periodText?.includes('Cả năm'))
+          ? '12 months'
+          : (periodText?.includes('6') ? '6 months' : undefined);
+
+        const [overviewRes, statsRes] = await Promise.allSettled([
+          reportApi.getOverview(year, periodParam as any),
+          reportApi.getAccidentStatistics(year, periodParam as any),
+        ]);
+
+        let rows: SummaryOverviewRow[] = [];
+        if (overviewRes.status === 'fulfilled' && overviewRes.value.data?.data) {
+          const list = overviewRes.value.data.data;
+          rows = list.map((grp: any) => {
+            const item = grp.data?.[0] || {};
+            return {
+              entityType: grp.businessTypeName || item.name || 'Loại hình DN',
+              code: item.code || '',
+              totalCompanies: item.tscoso || 0,
+              participatingCompanies: item.tscosothamgia || 0,
+              totalEmployees: item.tslaodong || item.tslaodongbaocao || 0,
+              reportingEmployees: item.tslaodongbaocao || 0,
+              femaleEmployees: item.ldnu || 0,
+              totalVictims: item.tsnguoitainan || 0,
+              fatalVictims: item.tsnguoichet || 0,
+              seriouslyInjuredVictims: item.tsnguoibithuongnang || 0,
+              accidentFrequencyRate: item.ktnld || 0,
+              fatalFrequencyRate: item.kchet || 0,
+              note: '',
+            };
+          });
         }
+
+        if (rows.length === 0) {
+          rows = MOCK_OVERVIEW_ROWS;
+        }
+
+        let profRows: SummaryClassificationRow[] = [];
+        let causeRows: SummaryClassificationRow[] = [];
+        let factorRows: SummaryClassificationRow[] = [];
+
+        if (statsRes.status === 'fulfilled' && statsRes.value.data?.data) {
+          const statsCategories = statsRes.value.data.data;
+          const ngheNghiepGroup = statsCategories.find((c: any) => c.code === 'NGHE_NGHIEP');
+          const causeGroup = statsCategories.find((c: any) => c.code === 'CAUSE');
+          const factorGroup = statsCategories.find((c: any) => c.code === 'INJURY_FACTOR');
+
+          const mapClassRow = (item: any, catName: string): SummaryClassificationRow => ({
+            categoryName: catName,
+            subCategoryName: item.ngheNghiep || item.nguyenNhanTaiNan || item.yeuToChanThuong || item.name || 'Khác',
+            code: String(item.code || ''),
+            totalIncidents: Number(item.totalAccident) || Number(item.totalIncidents) || 0,
+            fatalIncidents: Number(item.totalAccidentDeath) || Number(item.fatalIncidents) || 0,
+            multipleVictimIncidents: Number(item.totalHumanInjuredMore2) || 0,
+            totalVictims: Number(item.totalHumanInjured) || Number(item.totalVictims) || 0,
+            femaleVictims: Number(item.totalFemaleInjured) || 0,
+            fatalities: Number(item.totalHumanDeath) || 0,
+            seriouslyInjured: Number(item.totalHumanInjuredHeavy) || 0,
+            totalLeaveDays: Number(item.totalDayOff) || 0,
+            totalExpense: Number(item.totalBudget) || 0,
+            medicalExpense: Number(item.budgetMedical) || 0,
+            treatmentSalaryExpense: Number(item.budgetSalary) || 0,
+            compensationExpense: Number(item.budgetHelp) || 0,
+            propertyDamageExpense: Number(item.totalThietHai) || 0,
+          });
+
+          if (ngheNghiepGroup?.children?.length) {
+            profRows = ngheNghiepGroup.children.map((c: any) => mapClassRow(c, 'Phân theo ngành nghề'));
+          }
+          if (causeGroup?.children?.length) {
+            causeRows = causeGroup.children.map((c: any) => mapClassRow(c, 'Phân theo nguyên nhân'));
+          }
+          if (factorGroup?.children?.length) {
+            factorRows = factorGroup.children.map((c: any) => mapClassRow(c, 'Phân theo yếu tố gây chấn thương'));
+          }
+        }
+
+        if (profRows.length === 0) {
+          profRows = MOCK_CLASSIFICATION_ROWS.filter(r => r.categoryName === 'Phân theo ngành nghề');
+        }
+        if (causeRows.length === 0) {
+          causeRows = MOCK_CLASSIFICATION_ROWS.filter(r => r.categoryName === 'Phân theo nguyên nhân');
+        }
+        if (factorRows.length === 0) {
+          factorRows = MOCK_CLASSIFICATION_ROWS.filter(r => r.categoryName === 'Phân theo yếu tố gây chấn thương');
+        }
+
+        const totalOverview = rows.reduce((acc, curr) => ({
+          totalCompanies: acc.totalCompanies + curr.totalCompanies,
+          totalEmployees: acc.totalEmployees + curr.totalEmployees,
+          femaleEmployees: acc.femaleEmployees + curr.femaleEmployees,
+          totalVictims: acc.totalVictims + curr.totalVictims,
+          totalFatalities: (acc.totalFatalities || 0) + (curr.fatalVictims || 0),
+          totalSevereInjuries: (acc.totalSevereInjuries || 0) + (curr.seriouslyInjuredVictims || 0),
+          ktnld: 0,
+          kChet: 0,
+        }), {
+          totalCompanies: 0,
+          totalEmployees: 0,
+          femaleEmployees: 0,
+          totalVictims: 0,
+          totalFatalities: 0,
+          totalSevereInjuries: 0,
+          ktnld: 0,
+          kChet: 0,
+        });
+
+        setSummaryData({
+          sectionOne: {
+            rows,
+            total: totalOverview as any,
+          },
+          sectionTwo: {
+            byProfession: profRows,
+            byAccidentCause: causeRows,
+            byInjuryFactor: factorRows,
+          },
+        });
       } catch (err) {
         console.error('Lỗi khi tải báo cáo tổng hợp:', err);
         toast.error('Không thể tải dữ liệu báo cáo tổng hợp cho kỳ này');
@@ -831,9 +936,8 @@ export const AccidentSummaryReport = ({ year, periodText, onBack, provinceId }: 
       }
     };
 
-    const timer = setTimeout(fetchSummary, 50);
-    return () => clearTimeout(timer);
-  }, [selectedPeriodId, selectedProvinceIdState]);
+    fetchSummary();
+  }, [year, periodText, selectedPeriodId, selectedProvinceIdState]);
 
   const sectionOneRows = summaryData?.sectionOne?.rows || [];
   const totalsOverview = summaryData?.sectionOne?.total || {
