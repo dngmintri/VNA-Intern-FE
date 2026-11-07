@@ -55,7 +55,7 @@ export interface ReportStatistic {
 }
 
 export interface RelationalReport {
-  id: number;
+  id: string | number;
   status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
   company?: {
     companyName: string;

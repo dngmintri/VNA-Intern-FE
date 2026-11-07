@@ -88,6 +88,13 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as CustomAxiosRequestConfig | undefined;
 
+    if (error.response?.status === 500) {
+      console.error(
+        `[Axios 500 Error] ${originalRequest?.method?.toUpperCase()} ${originalRequest?.url}:`,
+        error.response?.data
+      );
+    }
+
     // Nếu không có response hoặc status không phải 401
     if (!error.response || error.response.status !== 401 || !originalRequest) {
       return Promise.reject(error);

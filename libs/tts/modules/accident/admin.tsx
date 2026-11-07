@@ -7,6 +7,7 @@ import { AccidentReportSheet, RelationalReport, ReportStatistic } from './compon
 import { AccidentSummaryReport } from './components/AccidentSummaryReport';
 import { useHasPermission } from '@/libs/shared/hooks/useHasPermission';
 import { useRouter } from 'next/navigation';
+import { reportApi, ReportPeriod as ApiReportPeriod } from './services/report.api';
 
 interface Province {
   id: number;
@@ -24,7 +25,8 @@ interface ReportPeriod {
   year: number;
 }
 
-interface ReportItem extends RelationalReport {
+interface ReportItem extends Omit<RelationalReport, 'id'> {
+  id: number | string;
   companyName: string;
   taxCode: string;
   period: string;
@@ -350,7 +352,7 @@ export const AccidentAdmin = () => {
   const router = useRouter();
 
   const [reports, setReports] = useState<ReportItem[]>([]);
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [selectedIds, setSelectedIds] = useState<(number | string)[]>([]);
   const [viewMode, setViewMode] = useState<'LIST' | 'DETAIL' | 'SUMMARY'>('LIST');
 
   const [searchName, setSearchName] = useState<string>('');
@@ -367,10 +369,10 @@ export const AccidentAdmin = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [selectedReport, setSelectedReport] = useState<ReportItem | null>(null);
   const [showRejectModal, setShowRejectModal] = useState<boolean>(false);
-  const [rejectReasons, setRejectReasons] = useState<Record<number, string>>({});
-  const [rejectTargetIds, setRejectTargetIds] = useState<number[]>([]);
+  const [rejectReasons, setRejectReasons] = useState<Record<string | number, string>>({});
+  const [rejectTargetIds, setRejectTargetIds] = useState<(number | string)[]>([]);
   const [showApproveConfirmModal, setShowApproveConfirmModal] = useState<boolean>(false);
-  const [approveConfirmTargetIds, setApproveConfirmTargetIds] = useState<number[]>([]);
+  const [approveConfirmTargetIds, setApproveConfirmTargetIds] = useState<(number | string)[]>([]);
   const [periods, setPeriods] = useState<ReportPeriod[]>([]);
   const [reportTimeline, setReportTimeline] = useState<TimelineItem[]>([]);
   const [showTimelineModal, setShowTimelineModal] = useState<boolean>(false);
@@ -379,6 +381,41 @@ export const AccidentAdmin = () => {
   const [availableYears, setAvailableYears] = useState<number[]>([2023, 2024, 2025, 2026]);
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [wards, setWards] = useState<Ward[]>([]);
+
+  // State cấu hình đợt báo cáo mới
+  const [showCreateConfigModal, setShowCreateConfigModal] = useState<boolean>(false);
+  const [configYear, setConfigYear] = useState<number>(new Date().getFullYear());
+  const [configPeriod, setConfigPeriod] = useState<ApiReportPeriod>('6 months');
+  const [configName, setConfigName] = useState<string>(`Báo cáo tình hình tai nạn lao động 6 tháng đầu năm ${new Date().getFullYear()}`);
+  const [configDateStart, setConfigDateStart] = useState<string>(`${new Date().getFullYear()}-01-01`);
+  const [configDateEnd, setConfigDateEnd] = useState<string>(`${new Date().getFullYear()}-07-15`);
+  const [isCreatingConfig, setIsCreatingConfig] = useState<boolean>(false);
+
+  const handleCreateConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!configName.trim()) {
+      toast.error('Vui lòng nhập tên đợt báo cáo');
+      return;
+    }
+    try {
+      setIsCreatingConfig(true);
+      await reportApi.createReportConfig({
+        year: Number(configYear),
+        period: configPeriod,
+        name: configName.trim(),
+        dateStart: configDateStart,
+        dateEnd: configDateEnd,
+      });
+      toast.success('Tạo đợt báo cáo mới thành công!');
+      setShowCreateConfigModal(false);
+      fetchReports();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Tạo đợt báo cáo thất bại');
+    } finally {
+      setIsCreatingConfig(false);
+    }
+  };
 
   useEffect(() => {
     if (viewMode === 'LIST') {
@@ -390,8 +427,8 @@ export const AccidentAdmin = () => {
   useEffect(() => {
     const loadConfigData = async () => {
       try {
-        const periodRes = await api.get('/report-periods', { params: { limit: 100 } });
-        const periodList = periodRes.data?.data?.data || [];
+        const periodRes = await api.get('/report-periods', { params: { limit: 100 } }).catch(() => null);
+        const periodList = periodRes?.data?.data?.data || [];
         if (periodList.length > 0) {
           const years: number[] = Array.from(new Set(periodList.map((p: ReportPeriod) => p.year)));
           years.sort((a, b) => b - a);
@@ -404,9 +441,9 @@ export const AccidentAdmin = () => {
           }
         }
 
-        const provRes = await api.get('/location/provinces');
-        const provList = provRes.data || [];
-        setProvinces(provList);
+        const provRes = await api.get('/location/provinces').catch(() => null);
+        const provList = provRes?.data?.value || (Array.isArray(provRes?.data) ? provRes.data : []);
+        setProvinces(Array.isArray(provList) ? provList : []);
         setSelectedProvince('');
       } catch (err) {
         console.error('Lỗi khi tải dữ liệu cấu hình:', err);
@@ -422,7 +459,7 @@ export const AccidentAdmin = () => {
         setSelectedWard('');
         return;
       }
-      const matched = provinces.find((p: Province) => p.name === selectedProvince);
+      const matched = Array.isArray(provinces) ? provinces.find((p: Province) => p.name === selectedProvince) : undefined;
       if (!matched) {
         setWards([]);
         setSelectedWard('');
@@ -430,7 +467,8 @@ export const AccidentAdmin = () => {
       }
       try {
         const res = await api.get(`/location/provinces/${matched.id}/wards`);
-        setWards(res.data || []);
+        const wardList = res?.data?.value || (Array.isArray(res?.data) ? res.data : []);
+        setWards(Array.isArray(wardList) ? wardList : []);
         setSelectedWard('');
       } catch (err) {
         console.error('Lỗi khi tải danh sách phường/xã:', err);
@@ -442,8 +480,8 @@ export const AccidentAdmin = () => {
   useEffect(() => {
     const fetchPeriods = async () => {
       try {
-        const res = await api.get('/report-periods', { params: { year: selectedYear, limit: 100 } });
-        setPeriods(res.data?.data?.data || []);
+        const res = await api.get('/report-periods', { params: { year: selectedYear, limit: 100 } }).catch(() => null);
+        setPeriods(res?.data?.data?.data || []);
       } catch (err) {
         console.error('Lỗi khi tải danh sách kỳ:', err);
       }
@@ -454,62 +492,58 @@ export const AccidentAdmin = () => {
   const fetchReports = async () => {
     setIsLoading(true);
     try {
-      let reportPeriodId = undefined;
-      if (selectedPeriod) {
-        const matched = periods.find(p => p.name.toLowerCase().includes(selectedPeriod.toLowerCase()));
-        if (matched) reportPeriodId = matched.id;
-      }
-
-      const params: Record<string, string | number | undefined> = {
-        page: currentPage,
-        limit: pageSize,
-        companyName: searchName || undefined,
-        taxCode: searchTaxCode || undefined,
-        reportPeriodId,
+      const response = await reportApi.getReportsByYear({
         year: selectedYear,
-        status: selectedStatus || undefined,
-      };
+        pageNumber: currentPage,
+        pageSize,
+      });
 
-      const response = await api.get('/so/reports', { params });
-      if (response.data?.data) {
-        const list = (response.data.data.data || []) as RawReport[];
-        const mappedList: ReportItem[] = list.map((item: RawReport) => {
-          const company = item.company;
-          const reportPeriod = item.reportPeriod;
-          return {
-            id: item.id,
-            status: item.status,
-            companyName: company?.companyName || '—',
-            taxCode: company?.taxCode || '—',
-            period: reportPeriod?.name || '—',
-            year: reportPeriod?.year || selectedYear,
-            province: company?.provinceDkkd?.name || '—',
-            ward: company?.wardDkkd?.name || '—',
-            attachmentUrl: item.attachmentUrl,
-            attachmentName: item.attachmentName,
-            company: company ? {
-              companyName: company.companyName || '—',
-              taxCode: company.taxCode || '—',
-              provinceDkkd: company.provinceDkkd ? { name: company.provinceDkkd.name || '—' } : null,
-              wardDkkd: company.wardDkkd ? { name: company.wardDkkd.name || '—' } : null,
-            } : null,
-            reportPeriod: reportPeriod ? {
-              name: reportPeriod.name || '—',
-              year: reportPeriod.year || selectedYear,
-            } : null,
-            statistics: item.statistics,
-          };
-        });
+      const resData = response.data?.data || response.data?.items || response.data || [];
+      const list = Array.isArray(resData) ? resData : (resData.items || resData.data || []);
+      const total = response.data?.pagination?.totalItems ?? response.data?.total ?? list.length;
 
-        const filteredList = mappedList.filter((item: ReportItem) => {
-          if (selectedProvince && item.province !== selectedProvince) return false;
-          if (selectedWard && item.ward !== selectedWard) return false;
-          return true;
-        });
+      const mappedList: ReportItem[] = list.map((item: any) => {
+        const company = item.business || item.company;
+        const pName = item.period === '12 months' || item.period === 'Cả năm' ? 'Cả năm' : '6 tháng';
+        const st = item.status === 'received' ? 'SUBMITTED' : (item.status === 'reporting' ? 'DRAFT' : (item.status || 'SUBMITTED'));
 
-        setReports(filteredList);
-        setTotalItems(filteredList.length);
-      }
+        return {
+          id: item.id,
+          status: st,
+          companyName: company?.name || company?.companyName || '—',
+          taxCode: company?.taxCode || '—',
+          period: pName,
+          year: item.year || selectedYear,
+          province: company?.registeredProvince || company?.provinceDkkd?.name || 'TP. Hồ Chí Minh',
+          ward: company?.registeredDistrict || company?.wardDkkd?.name || '—',
+          attachmentUrl: item.attachmentUrl || null,
+          attachmentName: item.attachmentName || null,
+          company: company ? {
+            companyName: company.name || company.companyName || '—',
+            taxCode: company.taxCode || '—',
+            provinceDkkd: { name: company.registeredProvince || 'TP. Hồ Chí Minh' },
+            wardDkkd: { name: company.registeredDistrict || '—' },
+          } : null,
+          reportPeriod: {
+            name: pName,
+            year: item.year || selectedYear,
+          },
+          statistics: item.accidents || item.statistics || [],
+        };
+      });
+
+      const filteredList = mappedList.filter((item: ReportItem) => {
+        if (searchName && !item.companyName.toLowerCase().includes(searchName.toLowerCase())) return false;
+        if (searchTaxCode && !item.taxCode.toLowerCase().includes(searchTaxCode.toLowerCase())) return false;
+        if (selectedPeriod && !item.period.toLowerCase().includes(selectedPeriod.toLowerCase())) return false;
+        if (selectedStatus && item.status !== selectedStatus) return false;
+        if (selectedProvince && item.province !== selectedProvince) return false;
+        if (selectedWard && item.ward !== selectedWard) return false;
+        return true;
+      });
+
+      setReports(filteredList);
+      setTotalItems(total || filteredList.length);
     } catch (err) {
       console.error('Lỗi khi tải danh sách báo cáo:', err);
       toast.error('Không thể tải danh sách báo cáo');
@@ -520,7 +554,7 @@ export const AccidentAdmin = () => {
 
   useEffect(() => {
     fetchReports();
-  }, [currentPage, pageSize, searchName, searchTaxCode, selectedPeriod, selectedStatus, selectedYear, periods, selectedProvince, selectedWard]);
+  }, [currentPage, pageSize, searchName, searchTaxCode, selectedPeriod, selectedStatus, selectedYear, selectedProvince, selectedWard]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -555,7 +589,7 @@ export const AccidentAdmin = () => {
 
   const handleConfirmApprove = async () => {
     try {
-      await api.patch('/so/reports/approve', { reportIds: approveConfirmTargetIds.map(id => Number(id)) });
+      await api.patch('/so/reports/approve', { reportIds: approveConfirmTargetIds });
       toast.success(`Đã duyệt thành công ${approveConfirmTargetIds.length} báo cáo!`);
       setShowApproveConfirmModal(false);
       setApproveConfirmTargetIds([]);
@@ -570,7 +604,7 @@ export const AccidentAdmin = () => {
     }
   };
 
-  const getCompanyName = (reportId: number) => {
+  const getCompanyName = (reportId: number | string) => {
     const r = reports.find(item => item.id === reportId);
     return r?.companyName || selectedReport?.companyName || 'Báo cáo';
   };
@@ -585,7 +619,7 @@ export const AccidentAdmin = () => {
     }
 
     setRejectTargetIds(selectedIds);
-    const initialReasons: Record<number, string> = {};
+    const initialReasons: Record<string | number, string> = {};
     selectedIds.forEach(id => {
       initialReasons[id] = '';
     });
@@ -604,7 +638,7 @@ export const AccidentAdmin = () => {
       await Promise.all(
         rejectTargetIds.map(id =>
           api.patch('/so/reports/reject', {
-            reportIds: [Number(id)],
+            reportIds: [id],
             note: rejectReasons[id].trim()
           })
         )
@@ -639,7 +673,7 @@ export const AccidentAdmin = () => {
     }
   };
 
-  const handleOpenTimelineModal = async (report: { id: number; companyName?: string }) => {
+  const handleOpenTimelineModal = async (report: { id: number | string; companyName?: string }) => {
     try {
       setTimelineReportName(report.companyName || 'Báo cáo');
       const statusRes = await api.get(`/so/reports/${report.id}/status`);
@@ -654,20 +688,36 @@ export const AccidentAdmin = () => {
 
   const handleViewReport = async (report: ReportItem) => {
     try {
-      const response = await api.get(`/so/reports/${report.id}`);
-      const rawReport = response.data?.data || response.data;
-      if (rawReport) {
+      const response = await reportApi.getReportOverviewDetail(String(report.id));
+      const resData = response.data?.data || response.data;
+      if (resData) {
+        const r = resData.report || resData;
+        const b = resData.business || resData.company || {};
+        const pName = r.period === '12 months' ? 'Cả năm' : '6 tháng';
+        const st = r.status === 'received' ? 'SUBMITTED' : (r.status === 'reporting' ? 'DRAFT' : (r.status || 'SUBMITTED'));
+
         const mappedReport: ReportItem = {
-          ...rawReport,
-          companyName: rawReport.company?.companyName || '—',
-          taxCode: rawReport.company?.taxCode || '—',
-          period: rawReport.reportPeriod?.name || '—',
-          status: rawReport.status,
-          year: rawReport.reportPeriod?.year || selectedYear,
-          province: rawReport.company?.provinceDkkd?.name || '—',
-          ward: rawReport.company?.wardDkkd?.name || '—',
-          attachmentUrl: rawReport.attachmentUrl || rawReport.attachment_url || null,
-          attachmentName: rawReport.attachmentName || rawReport.attachment_name || null,
+          id: r.id || report.id,
+          status: st,
+          companyName: b.name || b.companyName || report.companyName || '—',
+          taxCode: b.taxCode || report.taxCode || '—',
+          period: pName,
+          year: r.year || report.year || selectedYear,
+          province: b.registeredProvince || report.province || 'TP. Hồ Chí Minh',
+          ward: b.registeredDistrict || report.ward || '—',
+          attachmentUrl: r.attachmentUrl || null,
+          attachmentName: r.attachmentName || null,
+          company: {
+            companyName: b.name || b.companyName || '—',
+            taxCode: b.taxCode || '—',
+            provinceDkkd: { name: b.registeredProvince || 'TP. Hồ Chí Minh' },
+            wardDkkd: { name: b.registeredDistrict || '—' },
+          },
+          reportPeriod: {
+            name: pName,
+            year: r.year || selectedYear,
+          },
+          statistics: resData.accidents || resData.statistics || [],
         };
 
         setSelectedReport(mappedReport);
@@ -963,6 +1013,14 @@ export const AccidentAdmin = () => {
           
           <button
             type="button"
+            onClick={() => setShowCreateConfigModal(true)}
+            className="px-4 py-1.5 bg-[#2F6BFF] hover:bg-blue-600 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer flex items-center gap-1.5"
+          >
+            <span>+</span> Tạo đợt báo cáo
+          </button>
+
+          <button
+            type="button"
             onClick={handleOpenSummaryModal}
             className="px-4 py-1.5 border border-blue-600 hover:bg-blue-50 text-blue-600 rounded-lg text-xs font-semibold shadow-sm transition-colors bg-white cursor-pointer"
           >
@@ -982,7 +1040,7 @@ export const AccidentAdmin = () => {
               className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-medium text-gray-700 bg-white focus:outline-none focus:border-blue-500 cursor-pointer shadow-sm"
             >
               <option value="">Chọn tỉnh/ thành phố</option>
-              {provinces.map((prov: Province) => (
+              {Array.isArray(provinces) && provinces.map((prov: Province) => (
                 <option key={prov.id} value={prov.name}>{prov.name}</option>
               ))}
             </select>
@@ -995,7 +1053,7 @@ export const AccidentAdmin = () => {
               className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-medium text-gray-700 bg-white focus:outline-none focus:border-blue-500 cursor-pointer shadow-sm"
             >
               <option value="">Tất cả phường/ xã</option>
-              {wards.map((w: Ward) => (
+              {Array.isArray(wards) && wards.map((w: Ward) => (
                 <option key={w.id} value={w.name}>{w.name}</option>
               ))}
             </select>
@@ -1452,6 +1510,126 @@ export const AccidentAdmin = () => {
                 Đóng
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Cấu hình đợt báo cáo mới */}
+      {showCreateConfigModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[110] p-4 select-none animate-fadeIn">
+          <div className="bg-white rounded-2xl w-full max-w-[500px] shadow-2xl overflow-hidden border border-gray-150 font-sans text-gray-700">
+            <div className="bg-[#2F6BFF] text-white font-bold text-sm uppercase py-4 px-6 text-center tracking-wider flex items-center justify-between">
+              <span>Tạo đợt báo cáo mới</span>
+              <button
+                type="button"
+                onClick={() => setShowCreateConfigModal(false)}
+                className="text-white/80 hover:text-white font-bold text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateConfig} className="p-6 space-y-4 text-xs">
+              <div>
+                <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                  Năm báo cáo <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="2000"
+                  max="2100"
+                  value={configYear}
+                  onChange={(e) => {
+                    const yr = Number(e.target.value);
+                    setConfigYear(yr);
+                    setConfigName(`Báo cáo tình hình tai nạn lao động ${configPeriod === '6 months' ? '6 tháng đầu năm' : 'cả năm'} ${yr}`);
+                  }}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:outline-none focus:border-blue-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                  Kỳ báo cáo <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={configPeriod}
+                  onChange={(e) => {
+                    const p = e.target.value as ApiReportPeriod;
+                    setConfigPeriod(p);
+                    setConfigName(`Báo cáo tình hình tai nạn lao động ${p === '6 months' ? '6 tháng đầu năm' : 'cả năm'} ${configYear}`);
+                  }}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:outline-none focus:border-blue-500 cursor-pointer"
+                  required
+                >
+                  <option value="6 months">Báo cáo 6 tháng đầu năm</option>
+                  <option value="12 months">Báo cáo cả năm (12 tháng)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                  Tên đợt báo cáo <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={configName}
+                  onChange={(e) => setConfigName(e.target.value)}
+                  placeholder="Nhập tên đợt báo cáo..."
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:outline-none focus:border-blue-500"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                    Ngày bắt đầu nhận <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={configDateStart}
+                    onChange={(e) => setConfigDateStart(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:outline-none focus:border-blue-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                    Hạn chót nộp <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={configDateEnd}
+                    onChange={(e) => setConfigDateEnd(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:outline-none focus:border-blue-500"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-[10px] text-blue-800 leading-relaxed font-medium">
+                **Lưu ý:** Khi đợt báo cáo được tạo thành công, hệ thống backend sẽ tự động khởi tạo danh sách báo cáo cho toàn bộ các doanh nghiệp thuộc địa bàn quản lý.
+              </div>
+
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateConfigModal(false)}
+                  className="px-4 py-2 border border-gray-200 text-gray-500 hover:bg-gray-50 rounded-lg text-xs font-bold transition-all cursor-pointer bg-white"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingConfig}
+                  className="px-5 py-2 bg-[#2F6BFF] text-white hover:bg-blue-700 rounded-lg text-xs font-bold shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {isCreatingConfig ? 'Đang tạo...' : 'Xác nhận tạo đợt'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
