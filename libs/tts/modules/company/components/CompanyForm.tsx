@@ -641,11 +641,13 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
     return (
       <div className="flex-1 flex flex-col bg-[#EAEDF2] min-h-[85vh] p-6 font-sans">
         <div className="max-w-5xl mx-auto w-full">
-          <div className="mb-4">
-            <h1 className="text-lg font-bold text-gray-800">
-              {isEditMode ? 'Edit DN' : 'Thêm mới DN'}
-            </h1>
-          </div>
+          {!isEditMode && (
+            <div className="mb-4">
+              <h1 className="text-lg font-bold text-gray-800">
+                Thêm mới doanh nghiệp
+              </h1>
+            </div>
+          )}
 
           {/* Big White Card */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-6 md:p-8 space-y-6">
@@ -838,11 +840,13 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
       {renderHiddenFileInputs()}
 
       <div className="max-w-5xl mx-auto w-full">
-        <div className="mb-4">
-          <h1 className="text-lg font-bold text-gray-800">
-            {isEditMode ? 'Edit DN' : 'Thêm mới DN'}
-          </h1>
-        </div>
+        {!isEditMode && (
+          <div className="mb-4">
+            <h1 className="text-lg font-bold text-gray-800">
+              Thêm mới doanh nghiệp
+            </h1>
+          </div>
+        )}
 
         {/* Big White Card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-6 md:p-8 space-y-6">

@@ -6,7 +6,7 @@ import { api } from '@/libs/core/api/axios';
 import { reportApi } from '../services/report.api';
 
 interface ReportPeriod {
-  id: number;
+  id: number | string;
   name: string;
   year: number;
 }
@@ -754,7 +754,7 @@ const MOCK_CLASSIFICATION_ROWS: SummaryClassificationRow[] = [
 
 export const AccidentSummaryReport = ({ year, periodText, onBack, provinceId }: Props) => {
   const [periods, setPeriods] = useState<ReportPeriod[]>([]);
-  const [selectedPeriodId, setSelectedPeriodId] = useState<number | null>(null);
+  const [selectedPeriodId, setSelectedPeriodId] = useState<number | string | null>(null);
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
   const [loadingPeriods, setLoadingPeriods] = useState<boolean>(true);
   const [loadingSummary, setLoadingSummary] = useState<boolean>(false);
@@ -782,7 +782,8 @@ export const AccidentSummaryReport = ({ year, periodText, onBack, provinceId }: 
       setLoadingPeriods(true);
       try {
         const response = await api.get('/report-periods', { params: { year, limit: 100 } });
-        const list = (response.data?.data?.data || []) as ReportPeriod[];
+        const raw = response.data?.data;
+        const list = (Array.isArray(raw) ? raw : (raw?.data || response.data?.items || [])) as ReportPeriod[];
         setPeriods(list);
         
         if (list.length > 0) {
@@ -811,9 +812,11 @@ export const AccidentSummaryReport = ({ year, periodText, onBack, provinceId }: 
     const fetchSummary = async () => {
       setLoadingSummary(true);
       try {
-        const periodParam = (periodText?.includes('12') || periodText?.includes('Cả năm'))
+        const selectedPeriodObj = periods.find(p => String(p.id) === String(selectedPeriodId));
+        const currentPeriodName = selectedPeriodObj?.name || periodText || '';
+        const periodParam = (currentPeriodName.includes('12') || currentPeriodName.includes('Cả năm'))
           ? '12 months'
-          : (periodText?.includes('6') ? '6 months' : undefined);
+          : (currentPeriodName.includes('6') ? '6 months' : undefined);
 
         const [overviewRes, statsRes] = await Promise.allSettled([
           reportApi.getOverview(year, periodParam as any),
@@ -1067,16 +1070,16 @@ export const AccidentSummaryReport = ({ year, periodText, onBack, provinceId }: 
     ));
   };
 
-  const selectedPeriodObj = periods.find(p => p.id === selectedPeriodId);
+  const selectedPeriodObj = periods.find(p => String(p.id) === String(selectedPeriodId));
   const displayPeriodName = selectedPeriodObj ? selectedPeriodObj.name : (periodText || 'Chưa chọn');
 
   return (
     <div className="flex-grow flex flex-col bg-[#F4F6F9] min-h-screen font-sans">
       <div className="bg-white px-6 py-3 flex items-center justify-between border-b border-gray-200 shadow-sm flex-shrink-0">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-gray-400">Tai nạn lao động</span>
-          <span className="text-xs text-gray-400">❯</span>
-          <span className="text-xs font-semibold text-gray-400 hover:text-gray-600 cursor-pointer" onClick={onBack}>TNLĐ theo HĐLĐ</span>
+          <span className="text-xs font-semibold text-gray-400 hover:text-gray-600 cursor-pointer" onClick={onBack}>
+            Báo cáo định kỳ  Tai nạn lao động
+          </span>
           <span className="text-xs text-gray-400">❯</span>
           <h1 className="text-sm font-bold text-gray-800">Báo cáo tổng hợp</h1>
         </div>
@@ -1106,16 +1109,16 @@ export const AccidentSummaryReport = ({ year, periodText, onBack, provinceId }: 
                   <span className="text-gray-400 text-xs italic">Đang tải các kỳ...</span>
                 ) : (
                   <select
-                    value={selectedPeriodId || ''}
+                    value={selectedPeriodId ? String(selectedPeriodId) : ''}
                     onChange={(e) => {
-                      const val = e.target.value ? Number(e.target.value) : null;
+                      const val = e.target.value || null;
                       setSelectedPeriodId(val);
                     }}
                     className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-bold text-gray-700 bg-white focus:outline-none focus:border-blue-500 shadow-sm cursor-pointer min-w-[200px]"
                   >
                     <option value="">-- Chọn kỳ báo cáo --</option>
                     {periods.map((p) => (
-                      <option key={p.id} value={p.id}>
+                      <option key={String(p.id)} value={String(p.id)}>
                         {p.name}
                       </option>
                     ))}

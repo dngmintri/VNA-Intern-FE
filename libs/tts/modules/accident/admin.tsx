@@ -788,9 +788,7 @@ export const AccidentAdmin = () => {
       <div className="flex-1 flex flex-col bg-[#F4F6F9] min-h-screen font-sans">
         <div className="bg-white px-6 py-3 flex items-center justify-between border-b border-gray-200 shadow-sm flex-shrink-0 no-print">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-gray-400">Tai nạn lao động</span>
-            <span className="text-xs text-gray-400">❯</span>
-            <span className="text-xs font-semibold text-gray-400 hover:text-gray-600 cursor-pointer" onClick={() => setViewMode('LIST')}>TNLĐ theo HĐLĐ</span>
+            <span className="text-xs font-semibold text-gray-400 hover:text-gray-600 cursor-pointer" onClick={() => setViewMode('LIST')}>Báo cáo định kỳ  Tai nạn lao động</span>
             <span className="text-xs text-gray-400">❯</span>
             <h1 className="text-sm font-bold text-gray-800">Chi tiết báo cáo</h1>
           </div>
@@ -1026,9 +1024,9 @@ export const AccidentAdmin = () => {
       
       <div className="bg-white px-6 py-3 flex items-center justify-between border-b border-gray-200 shadow-sm flex-shrink-0">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-gray-400">Tai nạn lao động</span>
-          <span className="text-xs text-gray-400">❯</span>
-          <h1 className="text-sm font-bold text-gray-800">TNLĐ theo HĐLĐ</h1>
+          <h1 className="text-sm font-bold text-gray-800">
+            Báo cáo định kỳ  Tai nạn lao động
+          </h1>
         </div>
         
         <div className="flex items-center gap-2.5">
