@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import toast from 'react-hot-toast';
 import { api } from '@/libs/core/api/axios';
 import { AxiosError } from 'axios';
 import { reportApi } from '@/libs/tts/modules/accident/services/report.api';
+import { DatePickerInput } from '@/libs/shared/components/DatePickerInput';
 
 const reportPeriodSchema = z.object({
   reportName: z.string().min(1, { message: 'Tên báo cáo không được để trống' }),
@@ -47,6 +48,7 @@ export const ReportPeriodModal: React.FC<ReportPeriodModalProps> = ({
     setValue,
     reset,
     watch,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<ReportPeriodFormInput>({
     resolver: zodResolver(reportPeriodSchema),
@@ -290,10 +292,19 @@ export const ReportPeriodModal: React.FC<ReportPeriodModalProps> = ({
               <label className="text-xs font-semibold text-gray-500">
                 Ngày bắt đầu <span className="text-red-500">*</span>
               </label>
-              <input
-                type="date"
-                {...register('startDate')}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 text-sm text-gray-800 bg-white"
+              <Controller
+                control={control}
+                name="startDate"
+                render={({ field }) => (
+                  <DatePickerInput
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    hasError={!!errors.startDate}
+                    placeholder="dd/mm/yyyy"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 text-sm text-gray-800 bg-white"
+                  />
+                )}
               />
               {errors.startDate && (
                 <span className="text-[11px] text-red-500 font-medium">{errors.startDate.message}</span>
@@ -304,10 +315,19 @@ export const ReportPeriodModal: React.FC<ReportPeriodModalProps> = ({
               <label className="text-xs font-semibold text-gray-500">
                 Ngày kết thúc <span className="text-red-500">*</span>
               </label>
-              <input
-                type="date"
-                {...register('endDate')}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 text-sm text-gray-800 bg-white"
+              <Controller
+                control={control}
+                name="endDate"
+                render={({ field }) => (
+                  <DatePickerInput
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    hasError={!!errors.endDate}
+                    placeholder="dd/mm/yyyy"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 text-sm text-gray-800 bg-white"
+                  />
+                )}
               />
               {errors.endDate && (
                 <span className="text-[11px] text-red-500 font-medium">{errors.endDate.message}</span>
@@ -320,10 +340,19 @@ export const ReportPeriodModal: React.FC<ReportPeriodModalProps> = ({
               <label className="text-xs font-semibold text-gray-500">
                 Hạn chót nộp báo cáo <span className="text-red-500">*</span>
               </label>
-              <input
-                type="date"
-                {...register('dueDate')}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 text-sm text-gray-800 bg-white"
+              <Controller
+                control={control}
+                name="dueDate"
+                render={({ field }) => (
+                  <DatePickerInput
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    hasError={!!errors.dueDate}
+                    placeholder="dd/mm/yyyy"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 text-sm text-gray-800 bg-white"
+                  />
+                )}
               />
               {errors.dueDate && (
                 <span className="text-[11px] text-red-500 font-medium">{errors.dueDate.message}</span>

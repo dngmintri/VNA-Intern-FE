@@ -7,6 +7,7 @@ import { AxiosError } from 'axios';
 import { ReportPeriodModal } from './ReportPeriodModal';
 import { useHasPermission } from '@/libs/shared/hooks/useHasPermission';
 import { reportApi } from '@/libs/tts/modules/accident/services/report.api';
+import { DatePickerInput } from '@/libs/shared/components/DatePickerInput';
 
 interface ReportPeriod {
   id: string | number;
@@ -287,20 +288,20 @@ export const ReportPeriodList = () => {
                   </th>
 
                   <th className="py-2 px-3">
-                    <input
-                      type="date"
+                    <DatePickerInput
                       value={filterStartDate}
-                      onChange={(e) => setFilterStartDate(e.target.value)}
-                      className="w-full px-2 py-1 border border-gray-200 rounded text-[11px] font-normal text-gray-800 placeholder-gray-450 bg-white focus:outline-none focus:border-blue-500"
+                      onChange={setFilterStartDate}
+                      placeholder="dd/mm/yyyy"
+                      className="w-full px-2 py-1 pr-7 h-[28px] border border-gray-200 rounded text-[11px] font-normal text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:border-blue-500"
                     />
                   </th>
 
                   <th className="py-2 px-3">
-                    <input
-                      type="date"
+                    <DatePickerInput
                       value={filterEndDate}
-                      onChange={(e) => setFilterEndDate(e.target.value)}
-                      className="w-full px-2 py-1 border border-gray-200 rounded text-[11px] font-normal text-gray-800 placeholder-gray-450 bg-white focus:outline-none focus:border-blue-500"
+                      onChange={setFilterEndDate}
+                      placeholder="dd/mm/yyyy"
+                      className="w-full px-2 py-1 pr-7 h-[28px] border border-gray-200 rounded text-[11px] font-normal text-gray-800 placeholder-gray-400 bg-white focus:outline-none focus:border-blue-500"
                     />
                   </th>
 

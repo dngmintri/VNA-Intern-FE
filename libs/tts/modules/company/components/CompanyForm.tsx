@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import { useForm, FieldErrors } from 'react-hook-form';
+import { useForm, FieldErrors, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
@@ -11,6 +11,7 @@ import { companySchema, CompanyInput } from '../schemas/company.schema';
 import { BusinessType, BusinessIndustry } from '../interfaces/company.interface';
 import { SearchableSelect } from './SearchableSelect';
 import { FilePreviewModal } from './FilePreviewModal';
+import { DatePickerInput } from '@/libs/shared/components/DatePickerInput';
 
 const formatToBEDate = (dateStr: string | null | undefined): string | null => {
   if (!dateStr) return null;
@@ -139,6 +140,7 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
     getValues,
     watch,
     reset,
+    control,
     formState: { errors },
   } = useForm<CompanyInput>({
     resolver: zodResolver(companySchema),
@@ -934,11 +936,19 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
                 <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-600 z-10">
                   Ngày cấp GPKD
                 </label>
-                <input
-                  {...register('license_issue_date')}
-                  type="date"
-                  max={new Date().toLocaleDateString('en-CA')}
-                  className="w-full h-[42px] px-3 border border-gray-300 rounded-lg text-sm text-gray-800 bg-white focus:outline-none focus:border-blue-500 transition-colors cursor-pointer"
+                <Controller
+                  control={control}
+                  name="license_issue_date"
+                  render={({ field }) => (
+                    <DatePickerInput
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      max={new Date().toLocaleDateString('en-CA')}
+                      hasError={!!errors.license_issue_date}
+                      placeholder="dd/mm/yyyy"
+                    />
+                  )}
                 />
                 {errors.license_issue_date && (
                   <span className="text-[11px] text-red-500 mt-1 block">{errors.license_issue_date.message}</span>

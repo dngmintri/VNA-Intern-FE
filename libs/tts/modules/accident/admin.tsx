@@ -8,6 +8,7 @@ import { AccidentSummaryReport } from './components/AccidentSummaryReport';
 import { useHasPermission } from '@/libs/shared/hooks/useHasPermission';
 import { useRouter } from 'next/navigation';
 import { reportApi, ReportPeriod as ApiReportPeriod } from './services/report.api';
+import { DatePickerInput } from '@/libs/shared/components/DatePickerInput';
 
 interface Province {
   id: number;
@@ -1617,24 +1618,22 @@ export const AccidentAdmin = () => {
                   <label className="block text-[11px] font-bold text-gray-600 mb-1">
                     Ngày bắt đầu nhận <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="date"
+                  <DatePickerInput
                     value={configDateStart}
-                    onChange={(e) => setConfigDateStart(e.target.value)}
+                    onChange={setConfigDateStart}
+                    placeholder="dd/mm/yyyy"
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:outline-none focus:border-blue-500"
-                    required
                   />
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-gray-600 mb-1">
                     Hạn chót nộp <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="date"
+                  <DatePickerInput
                     value={configDateEnd}
-                    onChange={(e) => setConfigDateEnd(e.target.value)}
+                    onChange={setConfigDateEnd}
+                    placeholder="dd/mm/yyyy"
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:outline-none focus:border-blue-500"
-                    required
                   />
                 </div>
               </div>
