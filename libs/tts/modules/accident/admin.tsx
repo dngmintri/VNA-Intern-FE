@@ -1044,14 +1044,6 @@ export const AccidentAdmin = () => {
               ))}
             </select>
           </div>
-          
-          <button
-            type="button"
-            onClick={() => setShowCreateConfigModal(true)}
-            className="px-4 py-1.5 bg-[#2F6BFF] hover:bg-blue-600 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer flex items-center gap-1.5"
-          >
-            <span>+</span> Tạo đợt báo cáo
-          </button>
 
           <button
             type="button"

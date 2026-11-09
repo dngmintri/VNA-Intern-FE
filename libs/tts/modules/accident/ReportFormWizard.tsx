@@ -1901,22 +1901,22 @@ const handleConfirmSubmit = async () => {
             <h3 className="font-bold text-gray-900 mb-1 text-xs">1. Thông tin công ty</h3>
             <p className="text-[10px] font-bold text-red-500 italic mb-5">*** Lưu ý: nhập tổng quỹ lương 6 tháng khi khai báo TNLĐ 6 tháng hoặc tổng quỹ lương 12 tháng khi khai báo TNLĐ cả năm</p>
             
-            <div className="grid grid-cols-3 gap-x-5 gap-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-4">
               <div className="relative">
-                <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Tên công ty</label>
+                <label title="Tên công ty" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Tên công ty</label>
                 <input type="text" disabled value={formData.companyInfo.name} className="w-full p-2 border border-gray-200 bg-gray-50 rounded-lg font-medium text-gray-400" />
               </div>
               <div className="relative">
-                <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Loại hình công ty</label>
+                <label title="Loại hình công ty" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Loại hình công ty</label>
                 <input type="text" disabled value={formData.companyInfo.type} className="w-full p-2 border border-gray-200 bg-gray-50 rounded-lg font-medium text-gray-400" />
               </div>
               <div className="relative">
-                <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Ngành nghề kinh doanh</label>
+                <label title="Ngành nghề kinh doanh" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Ngành nghề kinh doanh</label>
                 <input type="text" disabled value={formData.companyInfo.industry} className="w-full p-2 border border-gray-200 bg-gray-50 rounded-lg font-medium text-gray-400" />
               </div>
               
               <div className="relative">
-                <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Tổng số lao động của cơ sở <span className="text-red-500">*</span></label>
+                <label title="Tổng số lao động của cơ sở *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Tổng số lao động của cơ sở <span className="text-red-500">*</span></label>
                 <input 
                   type="text" 
                   value={formData.companyInfo.totalEmployees === 0 ? '0' : formData.companyInfo.totalEmployees} 
@@ -1937,7 +1937,7 @@ const handleConfirmSubmit = async () => {
               </div>
               
               <div className="relative">
-                <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Tổng số lao động nữ <span className="text-red-500">*</span></label>
+                <label title="Tổng số lao động nữ *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Tổng số lao động nữ <span className="text-red-500">*</span></label>
                 <input 
                   type="text" 
                   value={formData.companyInfo.totalFemaleEmployees === 0 ? '0' : formData.companyInfo.totalFemaleEmployees} 
@@ -1958,7 +1958,7 @@ const handleConfirmSubmit = async () => {
               </div>
               
               <div className="relative">
-                <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Tổng quỹ lương <span className="text-red-500">*</span></label>
+                <label title="Tổng quỹ lương *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Tổng quỹ lương <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <input 
                     type="text" 
@@ -1988,85 +1988,81 @@ const handleConfirmSubmit = async () => {
             <div className="space-y-3">
               <h3 className="font-bold text-gray-900 text-xs">1. Tổng số vụ tai nạn lao động & số nạn nhân tai nạn lao động</h3>
               
-              <div className="grid grid-cols-4 gap-x-5 gap-y-3 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-4 pt-2">
                 <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Tổng số vụ <span className="text-red-500">*</span></label>
+                  <label title="Tổng số vụ *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Tổng số vụ <span className="text-red-500">*</span></label>
                   <input type="text" value={formData.generalStatistic.totalIncidents === 0 ? '0' : formData.generalStatistic.totalIncidents} onChange={(e) => handleStep2FieldChange('totalIncidents', e.target.value)} className="w-full p-2 border border-gray-200 rounded-lg font-semibold focus:outline-none focus:border-blue-500" />
                 </div>
 
                 <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Tổng số vụ có người chết <span className="text-red-500">*</span></label>
+                  <label title="Tổng số vụ có người chết *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Tổng số vụ có người chết <span className="text-red-500">*</span></label>
                   <input type="text" value={formData.generalStatistic.incidentsWithFatalities === 0 ? '0' : formData.generalStatistic.incidentsWithFatalities} onChange={(e) => handleStep2FieldChange('incidentsWithFatalities', e.target.value)} className={`w-full p-2 border rounded-lg font-semibold focus:outline-none ${errors.incidentsWithFatalities ? 'border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-blue-500'}`} />
                   {errors.incidentsWithFatalities && <span className="text-[10px] text-red-500 mt-1 block font-bold">{errors.incidentsWithFatalities}</span>}
                 </div>
 
                 <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Tổng số vụ có 2 người bị nạn trở lên <span className="text-red-500">*</span></label>
+                  <label title="Tổng số vụ có 2 người bị nạn trở lên *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Tổng số vụ có 2 người bị nạn trở lên <span className="text-red-500">*</span></label>
                   <input type="text" value={formData.generalStatistic.incidentsWithMultipleVictims === 0 ? '0' : formData.generalStatistic.incidentsWithMultipleVictims} onChange={(e) => handleStep2FieldChange('incidentsWithMultipleVictims', e.target.value)} className={`w-full p-2 border rounded-lg font-semibold focus:outline-none ${errors.incidentsWithMultipleVictims ? 'border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-blue-500'}`} />
                   {errors.incidentsWithMultipleVictims && <span className="text-[10px] text-red-500 mt-1 block font-bold">{errors.incidentsWithMultipleVictims}</span>}
                 </div>
 
-                <div className="relative invisible">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Tổng số vụ có 2 người bị nạn trở lên <span className="text-red-500">*</span></label>
-                  <input type="text" value={formData.generalStatistic.incidentsWithMultipleVictims === 0 ? '0' : formData.generalStatistic.incidentsWithMultipleVictims} onChange={(e) => handleStep2FieldChange('incidentsWithMultipleVictims', e.target.value)} className={`w-full p-2 border rounded-lg font-semibold focus:outline-none ${errors.incidentsWithMultipleVictims ? 'border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-blue-500'}`} />
-                  {errors.incidentsWithMultipleVictims && <span className="text-[10px] text-red-500 mt-1 block font-bold">{errors.incidentsWithMultipleVictims}</span>}
-                </div>
+                <div className="hidden xl:block pointer-events-none select-none" aria-hidden="true" />
 
                 <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Tổng số người bị nạn <span className="text-red-500">*</span></label>
+                  <label title="Tổng số người bị nạn *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Tổng số người bị nạn <span className="text-red-500">*</span></label>
                   <input type="text" value={formData.generalStatistic.totalVictims === 0 ? '0' : formData.generalStatistic.totalVictims} onChange={(e) => handleStep2FieldChange('totalVictims', e.target.value)} className="w-full p-2 border border-gray-200 rounded-lg font-semibold focus:outline-none focus:border-blue-500" />
                 </div>
 
                 <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Tổng số lao động nữ bị nạn <span className="text-red-500">*</span></label>
+                  <label title="Tổng số lao động nữ bị nạn *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Tổng số lao động nữ bị nạn <span className="text-red-500">*</span></label>
                   <input type="text" value={formData.generalStatistic.totalFemaleVictims === 0 ? '0' : formData.generalStatistic.totalFemaleVictims} onChange={(e) => handleStep2FieldChange('totalFemaleVictims', e.target.value)} className={`w-full p-2 border rounded-lg font-semibold focus:outline-none ${errors.totalFemaleVictims ? 'border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-blue-500'}`} />
                   {errors.totalFemaleVictims && <span className="text-[10px] text-red-500 mt-1 block font-bold">{errors.totalFemaleVictims}</span>}
                 </div>
 
                 <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Tổng số người bị chết <span className="text-red-500">*</span></label>
+                  <label title="Tổng số người bị chết *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Tổng số người bị chết <span className="text-red-500">*</span></label>
                   <input type="text" value={formData.generalStatistic.totalFatalities === 0 ? '0' : formData.generalStatistic.totalFatalities} onChange={(e) => handleStep2FieldChange('totalFatalities', e.target.value)} className={`w-full p-2 border rounded-lg font-semibold focus:outline-none ${errors.totalFatalities ? 'border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-blue-500'}`} />
                   {errors.totalFatalities && <span className="text-[10px] text-red-500 mt-1 block font-bold">{errors.totalFatalities}</span>}
                 </div>
 
                 <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Tổng số người bị thương nặng <span className="text-red-500">*</span></label>
+                  <label title="Tổng số người bị thương nặng *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Tổng số người bị thương nặng <span className="text-red-500">*</span></label>
                   <input type="text" value={formData.generalStatistic.totalSevereInjuries === 0 ? '0' : formData.generalStatistic.totalSevereInjuries} onChange={(e) => handleStep2FieldChange('totalSevereInjuries', e.target.value)} className={`w-full p-2 border rounded-lg font-semibold focus:outline-none ${errors.totalSevereInjuries ? 'border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-blue-500'}`} />
                   {errors.totalSevereInjuries && <span className="text-[10px] text-red-500 mt-1 block font-bold">{errors.totalSevereInjuries}</span>}
                 </div>
 
                 <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Số người bị nạn không QL <span className="text-red-500">*</span></label>
+                  <label title="Số người bị nạn không QL *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Số người bị nạn không QL <span className="text-red-500">*</span></label>
                   <input type="text" value={formData.generalStatistic.unmanagedVictims === 0 ? '0' : formData.generalStatistic.unmanagedVictims} onChange={(e) => handleStep2FieldChange('unmanagedVictims', e.target.value)} className={`w-full p-2 border rounded-lg font-semibold focus:outline-none ${errors.unmanagedVictims ? 'border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-blue-500'}`} />
                   {errors.unmanagedVictims && <span className="text-[10px] text-red-500 mt-1 block font-bold">{errors.unmanagedVictims}</span>}
                 </div>
 
                 <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Lao động nữ bị nạn không QL <span className="text-red-500">*</span></label>
+                  <label title="Lao động nữ bị nạn không QL *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Lao động nữ bị nạn không QL <span className="text-red-500">*</span></label>
                   <input type="text" value={formData.generalStatistic.unmanagedFemaleVictims === 0 ? '0' : formData.generalStatistic.unmanagedFemaleVictims} onChange={(e) => handleStep2FieldChange('unmanagedFemaleVictims', e.target.value)} className={`w-full p-2 border rounded-lg font-semibold focus:outline-none ${errors.unmanagedFemaleVictims ? 'border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-blue-500'}`} />
                   {errors.unmanagedFemaleVictims && <span className="text-[10px] text-red-500 mt-1 block font-bold">{errors.unmanagedFemaleVictims}</span>}
                 </div>
 
                 <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Số người chết không QL <span className="text-red-500">*</span></label>
+                  <label title="Số người chết không QL *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Số người chết không QL <span className="text-red-500">*</span></label>
                   <input type="text" value={formData.generalStatistic.unmanagedFatalities === 0 ? '0' : formData.generalStatistic.unmanagedFatalities} onChange={(e) => handleStep2FieldChange('unmanagedFatalities', e.target.value)} className={`w-full p-2 border rounded-lg font-semibold focus:outline-none ${errors.unmanagedFatalities ? 'border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-blue-500'}`} />
                   {errors.unmanagedFatalities && <span className="text-[10px] text-red-500 mt-1 block font-bold">{errors.unmanagedFatalities}</span>}
                 </div>
 
                 <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Người bị thương nặng không QL <span className="text-red-500">*</span></label>
+                  <label title="Người bị thương nặng không QL *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Người bị thương nặng không QL <span className="text-red-500">*</span></label>
                   <input type="text" value={formData.generalStatistic.unmanagedSevereInjuries === 0 ? '0' : formData.generalStatistic.unmanagedSevereInjuries} onChange={(e) => handleStep2FieldChange('unmanagedSevereInjuries', e.target.value)} className={`w-full p-2 border rounded-lg font-semibold focus:outline-none ${errors.unmanagedSevereInjuries ? 'border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-blue-500'}`} />
                   {errors.unmanagedSevereInjuries && <span className="text-[10px] text-red-500 mt-1 block font-bold">{errors.unmanagedSevereInjuries}</span>}
                 </div>
 
-                <div className="flex flex-col opacity-0 pointer-events-none select-none" aria-hidden="true" />
+                <div className="hidden xl:block pointer-events-none select-none" aria-hidden="true" />
               </div>
 
               <h3 className="font-bold text-gray-900 pt-2 text-xs">2. Thiệt hại do tai nạn lao động</h3>
               
-              <div className="grid grid-cols-4 gap-x-5 gap-y-3 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-4 pt-2">
                 <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Chi phí y tế <span className="text-red-500">*</span></label>
+                  <label title="Chi phí y tế *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Chi phí y tế <span className="text-red-500">*</span></label>
                   <div className="relative">
                     <input type="text" value={formData.generalStatistic.medicalCosts === '0' ? '' : formData.generalStatistic.medicalCosts} onChange={(e) => handleStep2CostChange('medicalCosts', e.target.value)} className="w-full p-2 border border-gray-200 rounded-lg font-semibold pr-14 focus:outline-none focus:border-blue-500" />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] text-gray-400 select-none">(1.000đ)</span>
@@ -2074,7 +2070,7 @@ const handleConfirmSubmit = async () => {
                 </div>
 
                 <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Chi phí trả lương trong thời gian điều trị <span className="text-red-500">*</span></label>
+                  <label title="Chi phí trả lương trong thời gian điều trị *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Chi phí trả lương trong thời gian điều trị <span className="text-red-500">*</span></label>
                   <div className="relative">
                     <input type="text" value={formData.generalStatistic.treatmentSalaryCosts === '0' ? '' : formData.generalStatistic.treatmentSalaryCosts} onChange={(e) => handleStep2CostChange('treatmentSalaryCosts', e.target.value)} className="w-full p-2 border border-gray-200 rounded-lg font-semibold pr-14 focus:outline-none focus:border-blue-500" />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] text-gray-400 select-none">(1.000đ)</span>
@@ -2082,7 +2078,7 @@ const handleConfirmSubmit = async () => {
                 </div>
 
                 <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Chi phí bồi thường trợ cấp <span className="text-red-500">*</span></label>
+                  <label title="Chi phí bồi thường trợ cấp *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Chi phí bồi thường trợ cấp <span className="text-red-500">*</span></label>
                   <div className="relative">
                     <input type="text" value={formData.generalStatistic.compensationCosts === '0' ? '' : formData.generalStatistic.compensationCosts} onChange={(e) => handleStep2CostChange('compensationCosts', e.target.value)} className="w-full p-2 border border-gray-200 rounded-lg font-semibold pr-14 focus:outline-none focus:border-blue-500" />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] text-gray-400 select-none">(1.000đ)</span>
@@ -2090,7 +2086,7 @@ const handleConfirmSubmit = async () => {
                 </div>
 
                 <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Tổng số tiền chi phí <span className="text-red-500">*</span></label>
+                  <label title="Tổng số tiền chi phí *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Tổng số tiền chi phí <span className="text-red-500">*</span></label>
                   <div className="relative">
                     <input type="text" disabled value={formData.generalStatistic.totalCosts || ''} className="w-full p-2 border border-gray-250 bg-gray-50 text-gray-500 font-bold rounded-lg pr-14 cursor-not-allowed" />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] text-gray-400 select-none">(1.000đ)</span>
@@ -2098,12 +2094,12 @@ const handleConfirmSubmit = async () => {
                 </div>
 
                 <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Tổng số ngày nghỉ vì TNLĐ <span className="text-red-500">*</span></label>
+                  <label title="Tổng số ngày nghỉ vì TNLĐ *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Tổng số ngày nghỉ vì TNLĐ <span className="text-red-500">*</span></label>
                   <input type="text" value={formData.generalStatistic.totalDaysOff === 0 ? '0' : formData.generalStatistic.totalDaysOff} onChange={(e) => setFormData(prev => ({ ...prev, generalStatistic: { ...prev.generalStatistic, totalDaysOff: cleanIntegerString(e.target.value) } }))} className="w-full p-2 border border-gray-200 rounded-lg font-semibold focus:outline-none focus:border-blue-500" />
                 </div>
 
                 <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Thiệt hại tài sản</label>
+                  <label title="Thiệt hại tài sản" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Thiệt hại tài sản</label>
                   <div className="relative">
                     <input type="text" value={formData.generalStatistic.propertyDamage === '0' ? '' : formData.generalStatistic.propertyDamage} onChange={(e) => handleStep2CostChange('propertyDamage', e.target.value)} className="w-full p-2 border border-gray-200 rounded-lg font-semibold pr-14 focus:outline-none focus:border-blue-500" />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] text-gray-400 select-none">(1.000đ)</span>
@@ -2130,7 +2126,7 @@ const handleConfirmSubmit = async () => {
             <div key={index} className="border border-gray-200 rounded-xl p-5 space-y-5 pt-6 bg-white shadow-sm">
                 <span className="font-bold text-gray-800 block text-xs border-b pb-2">Chi tiết vụ tai nạn số {index + 1}</span>
                 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="relative">
                 <h4 className="font-bold text-gray-800 text-xs">1. Phân theo nguyên nhân xảy ra TNLĐ</h4>
                 <select
@@ -2201,168 +2197,168 @@ const handleConfirmSubmit = async () => {
                 </div>
 
                 <h4 className="font-bold text-gray-800 text-xs mt-4">4. Chi tiết vụ tai nạn số {index + 1}</h4>
-                <div className="grid grid-cols-4 gap-x-5 gap-y-5">
-         <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Tổng số người bị nạn <span className="text-red-500">*</span></label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-4">
+                  <div className="relative">
+                    <label title="Tổng số người bị nạn *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Tổng số người bị nạn <span className="text-red-500">*</span></label>
                     <input
-                    type="text"
-                    value={detail.totalVictims || '0'}
-                    onChange={(e) =>
+                      type="text"
+                      value={detail.totalVictims || '0'}
+                      onChange={(e) =>
                         updateDetail(
-                        index,
-                        'totalVictims',
-                        Number(
+                          index,
+                          'totalVictims',
+                          Number(
                             cleanIntegerString(e.target.value)
+                          )
                         )
-                        )
-                    }
-                    className={`w-full p-2 border border-gray-200 rounded-lg font-semibold pr-14 focus:outline-none focus:border-blue-500 ${
+                      }
+                      className={`w-full p-2 border border-gray-200 rounded-lg font-semibold pr-14 focus:outline-none focus:border-blue-500 ${
                         detailErrors[index]?.totalVictims
-                        ? 'border-red-500'
-                        : 'border-gray-200'
-                    }`}
+                          ? 'border-red-500'
+                          : 'border-gray-200'
+                      }`}
                     />
 
                     {detailErrors[index]?.totalVictims && (
-                    <span className="text-[10px] text-red-500 mt-1 block font-bold">
+                      <span className="text-[10px] text-red-500 mt-1 block font-bold">
                         {detailErrors[index]?.totalVictims}
-                    </span>
+                      </span>
                     )}
-                </div>
+                  </div>
                     
-                <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Tổng số lao động nữ bị nạn <span className="text-red-500">*</span></label>
-                  <input type="text" value={detail.totalFemaleVictims || '0'}
-                    onChange={(e) =>
-                    updateDetail(
-                        index,
-                        'totalFemaleVictims',
-                        Number(cleanIntegerString(e.target.value))
-                    )
-                    } className={`w-full p-2 border rounded-lg font-semibold focus:outline-none ${errors.totalFemaleVictims ? 'border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-blue-500'}`} />
+                  <div className="relative">
+                    <label title="Tổng số lao động nữ bị nạn *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Tổng số lao động nữ bị nạn <span className="text-red-500">*</span></label>
+                    <input type="text" value={detail.totalFemaleVictims || '0'}
+                      onChange={(e) =>
+                        updateDetail(
+                          index,
+                          'totalFemaleVictims',
+                          Number(cleanIntegerString(e.target.value))
+                        )
+                      } className={`w-full p-2 border rounded-lg font-semibold focus:outline-none ${errors.totalFemaleVictims ? 'border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-blue-500'}`} />
                     {detailErrors[index]?.totalFemaleVictims && (
-                    <span className="text-[10px] text-red-500 mt-1 block font-bold">
+                      <span className="text-[10px] text-red-500 mt-1 block font-bold">
                         {detailErrors[index].totalFemaleVictims}
-                    </span>
+                      </span>
                     )}                
-                </div>
+                  </div>
 
-                <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Tổng số người bị chết <span className="text-red-500">*</span></label>
-                  <input type="text" value={detail.totalFatalities || '0'}
-                    onChange={(e) =>
-                    updateDetail(
-                        index,
-                        'totalFatalities',
-                        Number(cleanIntegerString(e.target.value))
-                    )
-                    } className={`w-full p-2 border rounded-lg font-semibold focus:outline-none ${errors.totalFatalities ? 'border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-blue-500'}`} />
+                  <div className="relative">
+                    <label title="Tổng số người bị chết *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Tổng số người bị chết <span className="text-red-500">*</span></label>
+                    <input type="text" value={detail.totalFatalities || '0'}
+                      onChange={(e) =>
+                        updateDetail(
+                          index,
+                          'totalFatalities',
+                          Number(cleanIntegerString(e.target.value))
+                        )
+                      } className={`w-full p-2 border rounded-lg font-semibold focus:outline-none ${errors.totalFatalities ? 'border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-blue-500'}`} />
                     {detailErrors[index]?.totalFatalities && (
-                    <span className="text-[10px] text-red-500 mt-1 block font-bold">
+                      <span className="text-[10px] text-red-500 mt-1 block font-bold">
                         {detailErrors[index].totalFatalities}
-                    </span>
+                      </span>
                     )}                  
-                    </div>
+                  </div>
 
-                <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Tổng số người bị thương nặng <span className="text-red-500">*</span></label>
-                  <input type="text"value={detail.totalSevereInjuries || '0'}
-                    onChange={(e) =>
-                    updateDetail(
-                        index,
-                        'totalSevereInjuries',
-                        Number(cleanIntegerString(e.target.value))
-                    )
-                    } className={`w-full p-2 border rounded-lg font-semibold focus:outline-none ${errors.totalSevereInjuries ? 'border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-blue-500'}`} />
+                  <div className="relative">
+                    <label title="Tổng số người bị thương nặng *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Tổng số người bị thương nặng <span className="text-red-500">*</span></label>
+                    <input type="text" value={detail.totalSevereInjuries || '0'}
+                      onChange={(e) =>
+                        updateDetail(
+                          index,
+                          'totalSevereInjuries',
+                          Number(cleanIntegerString(e.target.value))
+                        )
+                      } className={`w-full p-2 border rounded-lg font-semibold focus:outline-none ${errors.totalSevereInjuries ? 'border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-blue-500'}`} />
                     {detailErrors[index]?.totalSevereInjuries && (
-                    <span className="text-[10px] text-red-500 mt-1 block font-bold">
+                      <span className="text-[10px] text-red-500 mt-1 block font-bold">
                         {detailErrors[index].totalSevereInjuries}
-                    </span>
+                      </span>
                     )}                      
-                    </div>
+                  </div>
 
-                <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Số người bị nạn không QL <span className="text-red-500">*</span></label>
-                  <input type="text" 
-                  value={detail.unmanagedVictims || '0'}
-                    onChange={(e) =>
-                    updateDetail(
-                        index,
-                        'unmanagedVictims',
-                        Number(cleanIntegerString(e.target.value))
-                    )
-                    }
-                  className={`w-full p-2 border rounded-lg font-semibold focus:outline-none ${errors.unmanagedVictims ? 'border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-blue-500'}`} />
+                  <div className="relative">
+                    <label title="Số người bị nạn không QL *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Số người bị nạn không QL <span className="text-red-500">*</span></label>
+                    <input type="text" 
+                      value={detail.unmanagedVictims || '0'}
+                      onChange={(e) =>
+                        updateDetail(
+                          index,
+                          'unmanagedVictims',
+                          Number(cleanIntegerString(e.target.value))
+                        )
+                      }
+                      className={`w-full p-2 border rounded-lg font-semibold focus:outline-none ${errors.unmanagedVictims ? 'border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-blue-500'}`} />
 
                     {detailErrors[index]?.unmanagedVictims && (
-                    <span className="text-[10px] text-red-500 mt-1 block font-bold">
+                      <span className="text-[10px] text-red-500 mt-1 block font-bold">
                         {detailErrors[index]?.unmanagedVictims}
-                    </span>
+                      </span>
                     )}                
-                    </div>
+                  </div>
 
-                <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Lao động nữ bị nạn không QL <span className="text-red-500">*</span></label>
-                  <input type="text"
-                    value={detail.unmanagedFemaleVictims || '0'}
-                    onChange={(e) =>
-                    updateDetail(
-                        index,
-                        'unmanagedFemaleVictims',
-                        Number(cleanIntegerString(e.target.value))
-                    )
-                    }                   
-                    className={`w-full p-2 border rounded-lg font-semibold focus:outline-none ${errors.unmanagedFemaleVictims ? 'border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-blue-500'}`} />
+                  <div className="relative">
+                    <label title="Lao động nữ bị nạn không QL *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Lao động nữ bị nạn không QL <span className="text-red-500">*</span></label>
+                    <input type="text"
+                      value={detail.unmanagedFemaleVictims || '0'}
+                      onChange={(e) =>
+                        updateDetail(
+                          index,
+                          'unmanagedFemaleVictims',
+                          Number(cleanIntegerString(e.target.value))
+                        )
+                      }                   
+                      className={`w-full p-2 border rounded-lg font-semibold focus:outline-none ${errors.unmanagedFemaleVictims ? 'border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-blue-500'}`} />
                     {detailErrors[index]?.unmanagedFemaleVictims && (
-                    <span className="text-[10px] text-red-500 mt-1 block font-bold">
+                      <span className="text-[10px] text-red-500 mt-1 block font-bold">
                         {detailErrors[index].unmanagedFemaleVictims}
-                    </span>
+                      </span>
                     )}                      
-                    </div>
+                  </div>
 
-                <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Số người chết không QL <span className="text-red-500">*</span></label>
-                  <input type="text"
-                    value={detail.unmanagedFatalities || '0'}
-                    onChange={(e) =>
-                    updateDetail(
-                        index,
-                        'unmanagedFatalities',
-                        Number(cleanIntegerString(e.target.value))
-                    )
-                    }                   
-                    className={`w-full p-2 border rounded-lg font-semibold focus:outline-none ${errors.unmanagedFatalities ? 'border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-blue-500'}`} />
+                  <div className="relative">
+                    <label title="Số người chết không QL *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Số người chết không QL <span className="text-red-500">*</span></label>
+                    <input type="text"
+                      value={detail.unmanagedFatalities || '0'}
+                      onChange={(e) =>
+                        updateDetail(
+                          index,
+                          'unmanagedFatalities',
+                          Number(cleanIntegerString(e.target.value))
+                        )
+                      }                   
+                      className={`w-full p-2 border rounded-lg font-semibold focus:outline-none ${errors.unmanagedFatalities ? 'border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-blue-500'}`} />
                     {detailErrors[index]?.unmanagedFatalities && (
-                    <span className="text-[10px] text-red-500 mt-1 block font-bold">
+                      <span className="text-[10px] text-red-500 mt-1 block font-bold">
                         {detailErrors[index].unmanagedFatalities}
-                    </span>
+                      </span>
                     )}                      
-                    </div>
+                  </div>
 
-                <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Người bị thương nặng không QL <span className="text-red-500">*</span></label>
-                  <input type="text"
-                    value={detail.unmanagedSevereInjuries || '0'}
-                    onChange={(e) =>
-                    updateDetail(
-                        index,
-                        'unmanagedSevereInjuries',
-                        Number(cleanIntegerString(e.target.value))
-                    )
-                    }                   
-                    className={`w-full p-2 border rounded-lg font-semibold focus:outline-none ${errors.unmanagedSevereInjuries ? 'border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-blue-500'}`} />
+                  <div className="relative">
+                    <label title="Người bị thương nặng không QL *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Người bị thương nặng không QL <span className="text-red-500">*</span></label>
+                    <input type="text"
+                      value={detail.unmanagedSevereInjuries || '0'}
+                      onChange={(e) =>
+                        updateDetail(
+                          index,
+                          'unmanagedSevereInjuries',
+                          Number(cleanIntegerString(e.target.value))
+                        )
+                      }                   
+                      className={`w-full p-2 border rounded-lg font-semibold focus:outline-none ${errors.unmanagedSevereInjuries ? 'border-red-500 bg-red-50/30' : 'border-gray-200 focus:border-blue-500'}`} />
                     {detailErrors[index]?.unmanagedSevereInjuries && (
-                    <span className="text-[10px] text-red-500 mt-1 block font-bold">
+                      <span className="text-[10px] text-red-500 mt-1 block font-bold">
                         {detailErrors[index].unmanagedSevereInjuries}
-                    </span>
+                      </span>
                     )}                      
-                    </div>
+                  </div>
                 </div>
 
                 <h4 className="font-bold text-gray-800 text-xs mt-4">5. Thiệt hại do tai nạn lao động số {index + 1}</h4>
-                <div className="grid grid-cols-4 gap-x-5 gap-y-3 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-4 pt-2">
                 <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Chi phí y tế <span className="text-red-500">*</span></label>
+                  <label title="Chi phí y tế *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Chi phí y tế <span className="text-red-500">*</span></label>
                   <div className="relative">
                     <input type="text"
                         value={detail.medicalCosts}
@@ -2379,7 +2375,7 @@ const handleConfirmSubmit = async () => {
                 </div>
 
                 <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Chi phí trả lương trong thời gian điều trị <span className="text-red-500">*</span></label>
+                  <label title="Chi phí trả lương trong thời gian điều trị *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Chi phí trả lương trong thời gian điều trị <span className="text-red-500">*</span></label>
                   <div className="relative">
                     <input type="text"
                         value={detail.treatmentSalaryCosts}
@@ -2396,7 +2392,7 @@ const handleConfirmSubmit = async () => {
                 </div>
 
                 <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Chi phí bồi thường trợ cấp <span className="text-red-500">*</span></label>
+                  <label title="Chi phí bồi thường trợ cấp *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Chi phí bồi thường trợ cấp <span className="text-red-500">*</span></label>
                   <div className="relative">
                     <input type="text" 
                         value={detail.compensationCosts}
@@ -2413,7 +2409,7 @@ const handleConfirmSubmit = async () => {
                 </div>
 
                 <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Tổng số tiền chi phí <span className="text-red-500">*</span></label>
+                  <label title="Tổng số tiền chi phí *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Tổng số tiền chi phí <span className="text-red-500">*</span></label>
                   <div className="relative">
                     <input
                         value={detail.totalCosts}
@@ -2434,7 +2430,7 @@ const handleConfirmSubmit = async () => {
                 </div>
 
                 <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Tổng số ngày nghỉ vì TNLĐ <span className="text-red-500">*</span></label>
+                  <label title="Tổng số ngày nghỉ vì TNLĐ *" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Tổng số ngày nghỉ vì TNLĐ <span className="text-red-500">*</span></label>
                   <input type="text" 
                     value={detail.totalDaysOff || '0'}
                     onChange={(e) =>
@@ -2453,7 +2449,7 @@ const handleConfirmSubmit = async () => {
                 </div>
 
                 <div className="relative">
-                  <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">Thiệt hại tài sản</label>
+                  <label title="Thiệt hại tài sản" className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">Thiệt hại tài sản</label>
                   <div className="relative">
                     <input type="text" 
                         value={detail.propertyDamage || ''}
@@ -2484,12 +2480,12 @@ const handleConfirmSubmit = async () => {
         {currentStep === 4 && (
         <div className="space-y-6 animate-fadeIn border-t border-gray-100 pt-4">
             <h3 className="font-bold text-gray-900 text-xs">1. Tổng số vụ & số nạn nhân</h3>
-            <div className="grid grid-cols-4 gap-x-5 gap-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-4">
             {[
                 { key: 'totalIncidents', label: 'Tổng số vụ' },
                 { key: 'incidentsWithFatalities', label: 'Tổng số vụ có người chết' },
                 { key: 'incidentsWithMultipleVictims', label: 'Tổng số vụ có 2 người bị nạn trở lên' },
-                { key: 'invisible', label: '', className: 'invisible' },
+                { key: 'invisible', label: '', className: 'hidden xl:block pointer-events-none select-none' },
                 { key: 'totalVictims', label: 'Tổng số người bị nạn' },
                 { key: 'totalFemaleVictims', label: 'Tổng số lao động nữ bị nạn' },
                 { key: 'totalFatalities', label: 'Tổng số người bị chết' },
@@ -2502,7 +2498,7 @@ const handleConfirmSubmit = async () => {
                 <div key={item.key} className={`relative ${item.className || ''}`}>
                 {item.key !== 'invisible' && (
                     <>
-                    <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">
+                    <label title={`${item.label} *`} className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">
                         {item.label} <span className="text-red-500">*</span>
                     </label>
                     <input 
@@ -2521,7 +2517,7 @@ const handleConfirmSubmit = async () => {
             </div>
 
             <h3 className="font-bold text-gray-900 text-xs pt-4">2. Thiệt hại do tai nạn lao động</h3>
-            <div className="grid grid-cols-4 gap-x-5 gap-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-4">
             {[
                 { key: 'medicalCosts', label: 'Chi phí y tế' },
                 { key: 'treatmentSalaryCosts', label: 'Chi phí trả lương điều trị' },
@@ -2534,7 +2530,7 @@ const handleConfirmSubmit = async () => {
                 const displayVal = val !== undefined && val !== null && val !== '' ? String(val) : '0';
                 return (
                 <div key={item.key} className="relative">
-                <label className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10">{item.label} <span className="text-red-500">*</span></label>
+                <label title={`${item.label} *`} className="absolute -top-2 left-2 bg-white px-1 text-gray-400 font-semibold scale-90 origin-left z-10 whitespace-nowrap overflow-hidden text-ellipsis max-w-[calc(100%-16px)]">{item.label} <span className="text-red-500">*</span></label>
                 <input 
                     type="text" 
                     readOnly={item.key === 'totalCosts'}
