@@ -10,6 +10,7 @@ import { decodeJwt } from '@/libs/shared/utils/jwt';
 import { ReportData, ReportSheet, ReportStatistic } from '@/libs/tts/modules/accident/components/ReportSheet';
 import { useParams } from "next/navigation";
 import { reportApi, ReportPeriod } from '@/libs/tts/modules/accident/services/report.api';
+import { FilePreviewDrawer, FilePreviewTriggerButton } from '@/libs/shared/components/FilePreviewDrawer';
 interface WizardProps {
   reportId: string | number;
 }
@@ -229,6 +230,7 @@ export const ReportView: React.FC<WizardProps> = ({ reportId }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [showFileDrawer, setShowFileDrawer] = useState<boolean>(false);
   const params = useParams();
   const [periodName, setPeriodName] = useState<string>('');
   const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -439,6 +441,18 @@ useEffect(() => {
       setPeriodName(pName);
       if (report.year) {
         setReportYear(report.year.toString());
+      }
+
+      const rawAttachUrl = report.attachmentUrl || report.attachment_url || res.attachmentUrl || res.attachment_url;
+      const rawAttachName = report.attachmentName || report.attachment_name || res.attachmentName || res.attachment_name;
+
+      if (rawAttachUrl) {
+        const normalizedUrl = String(rawAttachUrl).replace(/\\/g, '/');
+        const fullUrl = normalizedUrl.startsWith('http://') || normalizedUrl.startsWith('https://')
+          ? normalizedUrl
+          : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${normalizedUrl.startsWith('/') ? '' : '/'}${normalizedUrl}`;
+        setFileUrl(fullUrl);
+        setSelectedFileName(rawAttachName || normalizedUrl.split('/').pop()?.split('?')[0] || 'Tài liệu đính kèm');
       }
 
       const mapDetail = (detail: any): DetailItem => {
@@ -1655,10 +1669,9 @@ const handleFileChange = async (
       }
     );
 
-    const {
-      fileName,
-      filePath,
-    } = uploadRes.data.data;
+    const uploadData = uploadRes.data?.data || uploadRes.data || {};
+    const filePath = uploadData.filePath;
+    const fileName = uploadData.originalName || uploadData.fileName || uploadData.filename || file.name;
 
     await api.patch(
       `/reports/${reportId}/attachment`,
@@ -1668,13 +1681,14 @@ const handleFileChange = async (
       }
     );
 
-    if (fileUrl) URL.revokeObjectURL(fileUrl);
-
-    const objectUrl = URL.createObjectURL(file);
+    const normalizedUrl = String(filePath).replace(/\\/g, '/');
+    const fullUrl = normalizedUrl.startsWith('http://') || normalizedUrl.startsWith('https://')
+      ? normalizedUrl
+      : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${normalizedUrl.startsWith('/') ? '' : '/'}${normalizedUrl}`;
 
     setSelectedFile(file);
     setSelectedFileName(fileName);
-    setFileUrl(objectUrl);
+    setFileUrl(fullUrl);
 
     toast.success("Đính kèm báo cáo thành công");
   } catch (error) {
@@ -1764,41 +1778,41 @@ const handleConfirmSubmit = async () => {
             Báo cáo tổng hợp tình hình tai nạn lao động - Kỳ báo cáo: {periodName}
           </h2>
 
-          <p className="text-xs text-gray-600 flex items-center gap-2">
+          <p className="text-xs text-gray-600 flex items-center gap-2.5 flex-wrap">
             <span className="text-red-500 font-bold">**</span>
 
-            File đính kèm báo cáo TNLĐ có dấu mộc công ty đã chọn:
+            <span className="font-medium">File đính kèm báo cáo TNLĐ có dấu mộc công ty:</span>
 
             <input
               type="file"
               ref={fileInputRef}
               className="hidden"
-              accept="application/pdf"
+              accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,application/pdf,image/*,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               onChange={handleFileChange}
             />
 
-            {selectedFileName && (
-              <>
-                <span className="text-emerald-600 font-semibold truncate max-w-[200px]">
-                  {selectedFileName}
-                </span>
-
-                {fileUrl && (
-                  <a
-                    href={fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline font-bold"
-                  >
-                    Xem file
-                  </a>
-                )}
-              </>
+            {fileUrl ? (
+              <FilePreviewTriggerButton
+                fileUrl={fileUrl}
+                fileName={selectedFileName}
+                onClick={() => setShowFileDrawer(true)}
+              />
+            ) : (
+              <span className="text-gray-400 italic font-normal ml-1">(Chưa có file đính kèm)</span>
             )}
           </p>
         </div>
 
         <ReportSheet report={mapFormDataToReportData()} />
+
+        {/* Drawer xem trước file đính kèm (PDF, Ảnh, Word...) */}
+        <FilePreviewDrawer
+          isOpen={showFileDrawer}
+          onClose={() => setShowFileDrawer(false)}
+          fileUrl={fileUrl}
+          fileName={selectedFileName}
+          title="File đính kèm báo cáo TNLĐ có dấu mộc công ty"
+        />
 
       </div>
     </div>

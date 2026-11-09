@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useForm, FieldErrors } from 'react-hook-form';
+import { useForm, FieldErrors, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -10,6 +10,7 @@ import { AxiosError } from 'axios';
 import { api } from '@/libs/core/api/axios';
 import { companySchema, CompanyInput } from '../../company/schemas/company.schema';
 import { SearchableSelect } from '../../company/components/SearchableSelect';
+import { DatePickerInput } from '@/libs/shared/components/DatePickerInput';
 
 interface Province {
   id: number;
@@ -63,6 +64,7 @@ export const RegisterForm = () => {
     handleSubmit,
     watch,
     setValue,
+    control,
     formState: { errors },
   } = useForm<CompanyInput>({
     resolver: zodResolver(companySchema),
@@ -424,13 +426,21 @@ export const RegisterForm = () => {
                   <label className="absolute -top-2 left-2 bg-white px-1 text-gray-600 font-semibold scale-90 origin-left z-10">
                     Ngày cấp GPKD
                   </label>
-                  <input
-                    {...register('license_issue_date')}
-                    type="date"
-                    max={new Date().toLocaleDateString('en-CA')}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none bg-white text-gray-900 font-medium ${
-                      errors.license_issue_date ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'
-                    }`}
+                  <Controller
+                    control={control}
+                    name="license_issue_date"
+                    render={({ field }) => (
+                      <DatePickerInput
+                        value={field.value}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        max={new Date().toLocaleDateString('en-CA')}
+                        hasError={!!errors.license_issue_date}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none bg-white text-gray-900 font-medium ${
+                          errors.license_issue_date ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'
+                        }`}
+                      />
+                    )}
                   />
                   {errors.license_issue_date && (
                     <span className="text-[9.5px] text-red-500 mt-1 block font-semibold">{errors.license_issue_date.message}</span>

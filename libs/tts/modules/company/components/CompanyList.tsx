@@ -31,7 +31,7 @@ import { api } from '@/libs/core/api/axios';
 import { AxiosError } from 'axios';
 import { Company, CompanyProfile } from '../interfaces/company.interface';
 import { SearchableSelect } from './SearchableSelect';
-import { FilePreviewModal } from './FilePreviewModal';
+import { FilePreviewDrawer } from '@/libs/shared/components/FilePreviewDrawer';
 import { useHasPermission } from '@/libs/shared/hooks/useHasPermission';
 
 interface Province {
@@ -1680,7 +1680,7 @@ export const CompanyList = () => {
         </div>
       )}
 
-      <FilePreviewModal
+      <FilePreviewDrawer
         isOpen={!!previewModalFile}
         onClose={() => setPreviewModalFile(null)}
         fileUrl={previewModalFile?.url || null}

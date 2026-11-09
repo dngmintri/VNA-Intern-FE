@@ -12,6 +12,7 @@ import Image from 'next/image';
 import toast from 'react-hot-toast';
 
 import { AxiosError } from 'axios';
+import { DatePickerInput } from '@/libs/shared/components/DatePickerInput';
 
 import { api } from '@/libs/core/api/axios';
 
@@ -1255,32 +1256,19 @@ export const UserForm: React.FC<UserFormProps> = ({
 
                   </label>
 
-                  <input
-
-                    type="date"
-
-                    max={new Date().toLocaleDateString('en-CA')}
-
+                  <DatePickerInput
                     value={dateOfBirth}
-
-                    onChange={(e) => {
-
-                      setDateOfBirth(e.target.value);
-
+                    onChange={(val) => {
+                      setDateOfBirth(val);
                       if (errors.dateOfBirth) setErrors((prev) => ({ ...prev, dateOfBirth: '' }));
-
                     }}
-
-                    className={`w-full h-10 px-3 border rounded-lg text-xs text-gray-800 focus:outline-none bg-white cursor-pointer transition-colors ${
-
+                    max={new Date().toLocaleDateString('en-CA')}
+                    hasError={!!errors.dateOfBirth}
+                    className={`w-full h-10 px-3 pr-10 border rounded-lg text-xs text-gray-800 focus:outline-none bg-white transition-colors ${
                       errors.dateOfBirth
-
                         ? 'border-red-500 focus:border-red-500'
-
                         : 'border-gray-300 focus:border-blue-500'
-
                     }`}
-
                   />
 
                   {errors.dateOfBirth && (
