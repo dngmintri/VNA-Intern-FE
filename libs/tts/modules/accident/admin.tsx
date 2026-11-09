@@ -1318,11 +1318,11 @@ export const AccidentAdmin = () => {
       </div>
       
       {selectedIds.length > 0 && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-gray-150 flex items-center h-12 overflow-hidden z-50 animate-fadeIn pr-4 font-sans select-none">
-          <div className="bg-[#2F6BFF] text-white w-12 h-full flex items-center justify-center font-bold text-sm">
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 bg-white rounded-lg shadow-lg border border-gray-200 flex items-center h-8 overflow-hidden z-50 animate-fadeIn text-xs select-none">
+          <div className="bg-[#2F6BFF] text-white px-2.5 h-full flex items-center justify-center font-bold text-xs">
             {selectedIds.length}
           </div>
-          <div className="px-4 text-gray-800 font-medium text-xs whitespace-nowrap">
+          <div className="px-3 text-gray-700 font-medium whitespace-nowrap text-xs">
             báo cáo được chọn
           </div>
           
@@ -1330,8 +1330,11 @@ export const AccidentAdmin = () => {
             <button
               type="button"
               onClick={handleBatchApproveClick}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg h-8 px-3.5 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer mr-2 shadow-sm"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded h-6 px-2.5 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer mr-1.5 shadow-sm"
             >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
               Duyệt báo cáo
             </button>
           )}
@@ -1340,23 +1343,24 @@ export const AccidentAdmin = () => {
             <button
               type="button"
               onClick={handleBatchRejectClick}
-              className="bg-red-500 hover:bg-red-600 text-white rounded-lg h-8 px-3.5 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer mr-3 shadow-sm"
+              className="bg-[#E53935] hover:bg-[#D32F2F] text-white rounded h-6 px-2.5 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer mr-2 shadow-sm"
             >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
               Từ chối
             </button>
           )}
 
-          <div className="w-px h-6 bg-gray-200 mr-3" />
+          <div className="h-4 w-px bg-gray-200 mr-2" />
 
           <button
             type="button"
             onClick={() => setSelectedIds([])}
-            className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded hover:bg-gray-100 cursor-pointer flex items-center justify-center"
+            className="text-gray-400 hover:text-gray-600 px-2 h-full flex items-center justify-center transition-colors cursor-pointer"
             title="Bỏ chọn"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            ✕
           </button>
         </div>
       )}
