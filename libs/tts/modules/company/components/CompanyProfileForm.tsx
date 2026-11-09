@@ -11,7 +11,7 @@ import { decodeJwt } from '@/libs/shared/utils/jwt';
 import { companySchema, CompanyInput } from '../schemas/company.schema';
 import { BusinessType, BusinessIndustry } from '../interfaces/company.interface';
 import { SearchableSelect } from './SearchableSelect';
-import { FilePreviewModal } from './FilePreviewModal';
+import { FilePreviewDrawer } from '@/libs/shared/components/FilePreviewDrawer';
 import { DatePickerInput } from '@/libs/shared/components/DatePickerInput';
 
 const formatToBEDate = (dateStr: string | null | undefined): string | null => {
@@ -965,7 +965,7 @@ export const CompanyProfileForm = () => {
           </button>
         </div>
 
-        <FilePreviewModal
+        <FilePreviewDrawer
           isOpen={!!previewModalFile}
           onClose={() => setPreviewModalFile(null)}
           fileUrl={previewModalFile?.url || null}
@@ -1483,7 +1483,7 @@ export const CompanyProfileForm = () => {
       </div>
     </form>
 
-    <FilePreviewModal
+    <FilePreviewDrawer
       isOpen={!!previewModalFile}
       onClose={() => setPreviewModalFile(null)}
       fileUrl={previewModalFile?.url || null}

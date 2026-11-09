@@ -117,10 +117,10 @@ export const FilePreviewDrawer: React.FC<FilePreviewDrawerProps> = ({
   const isLocalUrl = fileUrl.includes('localhost') || fileUrl.includes('127.0.0.1');
 
   return (
-    <div className="fixed inset-0 z-[120] overflow-hidden">
+    <div className="fixed inset-0 z-[150] overflow-hidden">
       {/* Backdrop overlay mờ */}
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-xs transition-opacity duration-300 ease-out"
+        className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity duration-300 ease-out"
         onClick={onClose}
       />
 

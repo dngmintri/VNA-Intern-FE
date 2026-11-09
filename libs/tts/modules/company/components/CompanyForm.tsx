@@ -10,7 +10,7 @@ import { api } from '@/libs/core/api/axios';
 import { companySchema, CompanyInput } from '../schemas/company.schema';
 import { BusinessType, BusinessIndustry } from '../interfaces/company.interface';
 import { SearchableSelect } from './SearchableSelect';
-import { FilePreviewModal } from './FilePreviewModal';
+import { FilePreviewDrawer } from '@/libs/shared/components/FilePreviewDrawer';
 import { DatePickerInput } from '@/libs/shared/components/DatePickerInput';
 
 const formatToBEDate = (dateStr: string | null | undefined): string | null => {
@@ -826,7 +826,7 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
 
         {renderCreatedAccountModal()}
 
-        <FilePreviewModal
+        <FilePreviewDrawer
           isOpen={!!previewModalFile}
           onClose={() => setPreviewModalFile(null)}
           fileUrl={previewModalFile?.url || null}
@@ -1339,7 +1339,7 @@ export const CompanyForm = ({ taxCode, onClose, onSuccess }: CompanyFormProps) =
 
       {renderCreatedAccountModal()}
 
-      <FilePreviewModal
+      <FilePreviewDrawer
         isOpen={!!previewModalFile}
         onClose={() => setPreviewModalFile(null)}
         fileUrl={previewModalFile?.url || null}
