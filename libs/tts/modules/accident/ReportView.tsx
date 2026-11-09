@@ -10,6 +10,7 @@ import { decodeJwt } from '@/libs/shared/utils/jwt';
 import { ReportData, ReportSheet, ReportStatistic } from '@/libs/tts/modules/accident/components/ReportSheet';
 import { useParams } from "next/navigation";
 import { reportApi, ReportPeriod } from '@/libs/tts/modules/accident/services/report.api';
+import { FilePreviewDrawer, FilePreviewTriggerButton } from '@/libs/shared/components/FilePreviewDrawer';
 interface WizardProps {
   reportId: string | number;
 }
@@ -229,6 +230,7 @@ export const ReportView: React.FC<WizardProps> = ({ reportId }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [showFileDrawer, setShowFileDrawer] = useState<boolean>(false);
   const params = useParams();
   const [periodName, setPeriodName] = useState<string>('');
   const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -450,7 +452,7 @@ useEffect(() => {
           ? normalizedUrl
           : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${normalizedUrl.startsWith('/') ? '' : '/'}${normalizedUrl}`;
         setFileUrl(fullUrl);
-        setSelectedFileName(rawAttachName || 'Bao_cao_dinh_kem.pdf');
+        setSelectedFileName(rawAttachName || normalizedUrl.split('/').pop()?.split('?')[0] || 'Tài liệu đính kèm');
       }
 
       const mapDetail = (detail: any): DetailItem => {
@@ -1785,33 +1787,32 @@ const handleConfirmSubmit = async () => {
               type="file"
               ref={fileInputRef}
               className="hidden"
-              accept="application/pdf"
+              accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,application/pdf,image/*,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               onChange={handleFileChange}
             />
 
             {fileUrl ? (
-              <a
-                href={fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-800 border border-red-200 rounded-md font-semibold text-xs shadow-xs transition-all cursor-pointer group"
-                title="Mở xem file PDF trong tab mới"
-              >
-                <svg className="w-4 h-4 text-red-600 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zm-2.5 7.5h-1v-4h1c.83 0 1.5.67 1.5 1.5v1c0 .83-.67 1.5-1.5 1.5zm-1-3v2h1c.28 0 .5-.22.5-.5v-1c0-.28-.22-.5-.5-.5h-1zm6 3h-2.5v-4H18v1h-1.5v.5H18v1h-1.5v1.5zm-8 0H6.5v-4H8c.83 0 1.5.67 1.5 1.5v1c0 .83-.67 1.5-1.5 1.5zm-1-3v2H8c.28 0 .5-.22.5-.5v-1c0-.28-.22-.5-.5-.5h-1z"/>
-                </svg>
-                <span>Xem file PDF</span>
-                <svg className="w-3.5 h-3.5 text-red-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-              </a>
+              <FilePreviewTriggerButton
+                fileUrl={fileUrl}
+                fileName={selectedFileName}
+                onClick={() => setShowFileDrawer(true)}
+              />
             ) : (
-              <span className="text-gray-400 italic font-normal">(Chưa có file đính kèm)</span>
+              <span className="text-gray-400 italic font-normal ml-1">(Chưa có file đính kèm)</span>
             )}
           </p>
         </div>
 
         <ReportSheet report={mapFormDataToReportData()} />
+
+        {/* Drawer xem trước file đính kèm (PDF, Ảnh, Word...) */}
+        <FilePreviewDrawer
+          isOpen={showFileDrawer}
+          onClose={() => setShowFileDrawer(false)}
+          fileUrl={fileUrl}
+          fileName={selectedFileName}
+          title="File đính kèm báo cáo TNLĐ có dấu mộc công ty"
+        />
 
       </div>
     </div>
