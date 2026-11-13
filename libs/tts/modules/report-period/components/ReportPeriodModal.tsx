@@ -80,22 +80,6 @@ export const ReportPeriodModal: React.FC<ReportPeriodModalProps> = ({
         setValue('startDate', `${watchYear}-07-01`);
         setValue('endDate', `${watchYear}-12-31`);
         setValue('dueDate', `${watchYear + 1}-01-15`);
-      } else if (watchPeriodType === 'Quý 1') {
-        setValue('startDate', `${watchYear}-01-01`);
-        setValue('endDate', `${watchYear}-03-31`);
-        setValue('dueDate', `${watchYear}-04-15`);
-      } else if (watchPeriodType === 'Quý 2') {
-        setValue('startDate', `${watchYear}-04-01`);
-        setValue('endDate', `${watchYear}-06-30`);
-        setValue('dueDate', `${watchYear}-07-15`);
-      } else if (watchPeriodType === 'Quý 3') {
-        setValue('startDate', `${watchYear}-07-01`);
-        setValue('endDate', `${watchYear}-09-30`);
-        setValue('dueDate', `${watchYear}-10-15`);
-      } else if (watchPeriodType === 'Quý 4') {
-        setValue('startDate', `${watchYear}-10-01`);
-        setValue('endDate', `${watchYear}-12-31`);
-        setValue('dueDate', `${watchYear + 1}-01-15`);
       }
     }
   }, [watchYear, watchPeriodType, isEdit, setValue]);
@@ -110,8 +94,10 @@ export const ReportPeriodModal: React.FC<ReportPeriodModalProps> = ({
             let guessedReportName = 'Báo cáo tai nạn lao động';
             let guessedPeriodType = 'Cả năm';
 
-            if (data.period === '6 months') {
+            if (data.period === '6 months start year' || data.period === '6 months') {
               guessedPeriodType = '6 tháng đầu năm';
+            } else if (data.period === '6 months end year') {
+              guessedPeriodType = '6 tháng cuối năm';
             } else if (data.period === '12 months') {
               guessedPeriodType = 'Cả năm';
             }
@@ -121,14 +107,8 @@ export const ReportPeriodModal: React.FC<ReportPeriodModalProps> = ({
                 guessedPeriodType = '6 tháng đầu năm';
               } else if (data.name.includes('6 tháng cuối năm')) {
                 guessedPeriodType = '6 tháng cuối năm';
-              } else if (data.name.includes('Quý 1')) {
-                guessedPeriodType = 'Quý 1';
-              } else if (data.name.includes('Quý 2')) {
-                guessedPeriodType = 'Quý 2';
-              } else if (data.name.includes('Quý 3')) {
-                guessedPeriodType = 'Quý 3';
-              } else if (data.name.includes('Quý 4')) {
-                guessedPeriodType = 'Quý 4';
+              } else if (data.name.includes('Cả năm')) {
+                guessedPeriodType = 'Cả năm';
               }
 
               guessedReportName = data.name
@@ -175,20 +155,23 @@ export const ReportPeriodModal: React.FC<ReportPeriodModalProps> = ({
   };
 
   const onSubmit = async (values: ReportPeriodFormInput) => {
-    const periodEnum = (values.periodType.includes('12') || values.periodType.includes('Cả năm'))
-      ? '12 months'
-      : '6 months';
+    let periodEnum = '12 months';
+    if (values.periodType === '6 tháng đầu năm') {
+      periodEnum = '6 months start year';
+    } else if (values.periodType === '6 tháng cuối năm') {
+      periodEnum = '6 months end year';
+    } else if (values.periodType === 'Cả năm') {
+      periodEnum = '12 months';
+    }
 
     const name = `${values.reportName} ${values.periodType} năm ${values.year}`;
-
-    const finalDateEnd = values.dueDate || values.endDate;
 
     const payload = {
       name,
       year: Number(values.year),
       period: periodEnum as any,
       dateStart: formatDateForBackend(values.startDate),
-      dateEnd: formatDateForBackend(finalDateEnd),
+      dateEnd: formatDateForBackend(values.endDate),
       status: values.status === 'OPEN',
     };
 
@@ -276,10 +259,6 @@ export const ReportPeriodModal: React.FC<ReportPeriodModalProps> = ({
                 <option value="Cả năm">Cả năm</option>
                 <option value="6 tháng đầu năm">6 tháng đầu năm</option>
                 <option value="6 tháng cuối năm">6 tháng cuối năm</option>
-                <option value="Quý 1">Quý 1</option>
-                <option value="Quý 2">Quý 2</option>
-                <option value="Quý 3">Quý 3</option>
-                <option value="Quý 4">Quý 4</option>
               </select>
               {errors.periodType && (
                 <span className="text-[11px] text-red-500 font-medium">{errors.periodType.message}</span>
