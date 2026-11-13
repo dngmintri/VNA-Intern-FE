@@ -61,10 +61,6 @@ export const ReportPeriodList = () => {
     let guessedPeriodType = 'Cả năm';
     if (fullName.includes('6 tháng đầu năm')) guessedPeriodType = '6 tháng đầu năm';
     else if (fullName.includes('6 tháng cuối năm')) guessedPeriodType = '6 tháng cuối năm';
-    else if (fullName.includes('Quý 1')) guessedPeriodType = 'Quý 1';
-    else if (fullName.includes('Quý 2')) guessedPeriodType = 'Quý 2';
-    else if (fullName.includes('Quý 3')) guessedPeriodType = 'Quý 3';
-    else if (fullName.includes('Quý 4')) guessedPeriodType = 'Quý 4';
 
     const guessedReportName = fullName
       .replace(guessedPeriodType, '')
@@ -81,10 +77,8 @@ export const ReportPeriodList = () => {
     setIsLoading(true);
     try {
       let periodParam: any = undefined;
-      if (filterPeriodType.includes('12') || filterPeriodType.includes('Cả năm')) {
+      if (filterPeriodType === 'Cả năm') {
         periodParam = '12 months';
-      } else if (filterPeriodType.includes('6')) {
-        periodParam = '6 months';
       }
 
       let statusBool: boolean | undefined = undefined;
@@ -110,13 +104,40 @@ export const ReportPeriodList = () => {
         id: item.id,
         name: item.name,
         year: item.year,
+        period: item.period,
         startDate: item.dateStart || item.startDate,
         endDate: item.dateEnd || item.endDate,
         status: (item.status === true || item.status === 'OPEN') ? 'OPEN' : 'CLOSED',
       }));
 
-      setPeriods(mapped);
-      setTotalItems(resData?.pagination?.totalItems ?? resData?.total ?? mapped.length);
+      let result = mapped;
+      if (filterPeriodType === 'Cả năm') {
+        result = result.filter((p) => p.name.includes('Cả năm') || (p as any).period === '12 months');
+      } else if (filterPeriodType === '6 tháng') {
+        result = result.filter(
+          (p) => p.name.includes('6 tháng') || String((p as any).period || '').includes('6 months')
+        );
+      }
+
+      if (filterStartDate) {
+        result = result.filter((p) => p.startDate && p.startDate >= filterStartDate);
+      }
+      if (filterEndDate) {
+        result = result.filter((p) => p.endDate && p.endDate <= filterEndDate);
+      }
+
+      if (filterStatus === 'OPEN') {
+        result = result.filter((p) => p.status === 'OPEN');
+      } else if (filterStatus === 'CLOSED') {
+        result = result.filter((p) => p.status === 'CLOSED');
+      }
+
+      setPeriods(result);
+      setTotalItems(
+        filterPeriodType || filterStartDate || filterEndDate || filterStatus
+          ? result.length
+          : (resData?.pagination?.totalItems ?? resData?.total ?? mapped.length)
+      );
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       const msg = axiosError.response?.data?.message || 'Không thể tải danh sách cấu hình báo cáo';
@@ -278,12 +299,7 @@ export const ReportPeriodList = () => {
                     >
                       <option value="">Kỳ báo cáo</option>
                       <option value="Cả năm">Cả năm</option>
-                      <option value="6 tháng đầu năm">6 tháng đầu năm</option>
-                      <option value="6 tháng cuối năm">6 tháng cuối năm</option>
-                      <option value="Quý 1">Quý 1</option>
-                      <option value="Quý 2">Quý 2</option>
-                      <option value="Quý 3">Quý 3</option>
-                      <option value="Quý 4">Quý 4</option>
+                      <option value="6 tháng">6 tháng</option>
                     </select>
                   </th>
 

@@ -1,6 +1,6 @@
 import { api } from '@/libs/core/api/axios';
 
-export type ReportPeriod = '6 months' | '12 months';
+export type ReportPeriod = '6 months' | '12 months' | '6 months start year' | '6 months end year';
 export type ReportStatus = 'reporting' | 'received' | 'approved' | 'rejected' | 'pending';
 
 export interface BusinessInfoForReport {
