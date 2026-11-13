@@ -9,6 +9,7 @@ interface ReportPeriod {
   id: number | string;
   name: string;
   year: number;
+  period?: string;
 }
 
 export interface SummaryOverviewRow {
@@ -814,9 +815,11 @@ export const AccidentSummaryReport = ({ year, periodText, onBack, provinceId }: 
       try {
         const selectedPeriodObj = periods.find(p => String(p.id) === String(selectedPeriodId));
         const currentPeriodName = selectedPeriodObj?.name || periodText || '';
-        const periodParam = (currentPeriodName.includes('12') || currentPeriodName.includes('Cả năm'))
-          ? '12 months'
-          : (currentPeriodName.includes('6') ? '6 months' : undefined);
+        const periodParam = selectedPeriodObj?.period || (
+          (currentPeriodName.includes('12') || currentPeriodName.includes('Cả năm'))
+            ? '12 months'
+            : (currentPeriodName.includes('6') ? '6 months' : undefined)
+        );
 
         const [overviewRes, statsRes] = await Promise.allSettled([
           reportApi.getOverview(year, periodParam as any),
