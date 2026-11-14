@@ -56,7 +56,7 @@ export interface ReportStatistic {
 
 export interface RelationalReport {
   id: string | number;
-  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'NOT_REPORTING';
   company?: {
     companyName: string;
     taxCode: string;

@@ -224,6 +224,8 @@ export const ReportView: React.FC<WizardProps> = ({ reportId }) => {
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [reportYear, setReportYear] = useState<string>('2022');
+  const [reportStatus, setReportStatus] = useState<string>('');
+  const [rejectionReason, setRejectionReason] = useState<string>('');
   const [showCancelWarning, setShowCancelWarning] = useState<boolean>(false);
   const [errors, setErrors] = useState<FormErrorsState>({});
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
@@ -436,6 +438,9 @@ useEffect(() => {
       const accident = res.accident || {};
       const accidentDetails = Array.isArray(res.accidentDetails) ? res.accidentDetails : [];
       const benefitAccident = res.benefitAccident || {};
+
+      setReportStatus(report.status || '');
+      setRejectionReason(report.note || '');
 
       const pName = report.period === '12 months' ? 'Cả năm' : '6 tháng';
       setPeriodName(pName);
@@ -1773,6 +1778,40 @@ const handleConfirmSubmit = async () => {
           </div>
         </div>
       )}
+
+        {reportStatus === 'rejected' && (
+          <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="text-red-500 mt-0.5 shrink-0">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xs font-bold text-red-800 uppercase tracking-wide mb-1 flex items-center gap-1.5">
+                  <span>⚠️</span> Báo cáo đã bị Sở Lao động - Thương binh và Xã hội từ chối tiếp nhận
+                </h3>
+                <div className="text-xs text-red-700 bg-white/80 border border-red-200 rounded p-2.5 my-2">
+                  <span className="font-semibold text-red-900 block mb-0.5">Lý do từ chối:</span>
+                  <p className="whitespace-pre-wrap">{rejectionReason || "Báo cáo chưa hợp lệ, vui lòng kiểm tra và chỉnh sửa lại."}</p>
+                </div>
+                <p className="text-[11px] text-red-600 font-medium">
+                  👉 Vui lòng kiểm tra lại số liệu, chỉnh sửa và nộp lại báo cáo.
+                </p>
+              </div>
+              {reportId && (
+                <button
+                  type="button"
+                  onClick={() => router.push(`/dashboard/accidents-enterprise/edit/${reportId}`)}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-colors shadow-sm shrink-0 cursor-pointer"
+                >
+                  Chỉnh sửa báo cáo
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="mb-6">
           <h2 className="text-sm font-bold text-gray-800 mb-2">
             Báo cáo tổng hợp tình hình tai nạn lao động - Kỳ báo cáo: {periodName}

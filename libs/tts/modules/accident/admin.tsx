@@ -26,8 +26,9 @@ interface ReportPeriod {
   year: number;
 }
 
-interface ReportItem extends Omit<RelationalReport, 'id'> {
+interface ReportItem extends Omit<RelationalReport, 'id' | 'status'> {
   id: number | string;
+  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'NOT_REPORTING';
   companyName: string;
   taxCode: string;
   period: string;
@@ -40,7 +41,7 @@ interface ReportItem extends Omit<RelationalReport, 'id'> {
 
 interface RawReport {
   id: number;
-  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'NOT_REPORTING';
   company?: {
     companyName?: string;
     taxCode?: string;
@@ -89,7 +90,7 @@ interface ReportMock {
   companyName: string;
   taxCode: string;
   period: '6 tháng' | 'Cả năm';
-  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'NOT_REPORTING';
   year: number;
   province: string;
   ward: string;
@@ -394,7 +395,7 @@ export const AccidentAdmin = () => {
   const [showCreateConfigModal, setShowCreateConfigModal] = useState<boolean>(false);
   const [configYear, setConfigYear] = useState<number>(new Date().getFullYear());
   const [configPeriod, setConfigPeriod] = useState<ApiReportPeriod>('6 months');
-  const [configName, setConfigName] = useState<string>(`Báo cáo tình hình tai nạn lao động 6 tháng đầu năm ${new Date().getFullYear()}`);
+  const [configName, setConfigName] = useState<string>(`Báo cáo tình hình tai nạn lao động 6 tháng ${new Date().getFullYear()}`);
   const [configDateStart, setConfigDateStart] = useState<string>(`${new Date().getFullYear()}-01-01`);
   const [configDateEnd, setConfigDateEnd] = useState<string>(`${new Date().getFullYear()}-07-15`);
   const [isCreatingConfig, setIsCreatingConfig] = useState<boolean>(false);
@@ -503,11 +504,13 @@ export const AccidentAdmin = () => {
   const fetchReports = async () => {
     setIsLoading(true);
     try {
-      let statusParam: 'reporting' | 'received' | 'approved' | 'rejected' | undefined = undefined;
-      if (selectedStatus === 'DRAFT') statusParam = 'reporting';
+      let statusParam: 'reporting' | 'received' | 'approved' | 'rejected' | 'expired' | 'not_reporting' | undefined = undefined;
+      if (selectedStatus === 'NOT_REPORTING') statusParam = 'not_reporting';
+      else if (selectedStatus === 'DRAFT') statusParam = 'reporting';
       else if (selectedStatus === 'SUBMITTED') statusParam = 'received';
       else if (selectedStatus === 'APPROVED') statusParam = 'approved';
       else if (selectedStatus === 'REJECTED') statusParam = 'rejected';
+      else if (selectedStatus === 'EXPIRED') statusParam = 'expired';
 
       let periodParam: '6 months' | '12 months' | undefined = undefined;
       if (selectedPeriod.includes('12') || selectedPeriod.includes('Cả năm')) {
@@ -534,10 +537,12 @@ export const AccidentAdmin = () => {
       const mappedList: ReportItem[] = list.map((item: any) => {
         const company = item.business || item.company;
         const pName = item.period === '12 months' || item.period === 'Cả năm' ? 'Cả năm' : '6 tháng';
-        let st: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' = 'SUBMITTED';
+        let st: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'NOT_REPORTING' = 'SUBMITTED';
         if (item.status === 'approved' || item.status === 'APPROVED') st = 'APPROVED';
         else if (item.status === 'rejected' || item.status === 'REJECTED') st = 'REJECTED';
         else if (item.status === 'received' || item.status === 'SUBMITTED') st = 'SUBMITTED';
+        else if (item.status === 'expired' || item.status === 'EXPIRED') st = 'EXPIRED';
+        else if (item.status === 'not_reporting' || item.status === 'NOT_REPORTING') st = 'NOT_REPORTING';
         else if (item.status === 'reporting' || item.status === 'DRAFT') st = 'DRAFT';
 
         return {
@@ -870,10 +875,24 @@ export const AccidentAdmin = () => {
                         : selectedReport.status === 'SUBMITTED'
                         ? 'bg-blue-50 text-blue-600 border-blue-200'
                         : selectedReport.status === 'REJECTED'
-                        ? 'bg-red-50 text-red-600 border-red-200'
-                        : 'bg-gray-50 text-gray-400 border-gray-200'
+                        ? 'bg-rose-50 text-rose-600 border-rose-200'
+                        : selectedReport.status === 'EXPIRED'
+                        ? 'bg-gray-100 text-gray-500 border-gray-300'
+                        : selectedReport.status === 'NOT_REPORTING'
+                        ? 'bg-slate-100 text-slate-600 border-slate-300'
+                        : 'bg-amber-50 text-amber-600 border-amber-200'
                     }`}>
-                      {selectedReport.status === 'APPROVED' ? 'Đã duyệt' : selectedReport.status === 'SUBMITTED' ? 'Đã tiếp nhận (Chờ duyệt)' : selectedReport.status === 'REJECTED' ? 'Bị từ chối' : 'Đang báo cáo (Draft)'}
+                      {selectedReport.status === 'APPROVED'
+                        ? 'Đã duyệt'
+                        : selectedReport.status === 'SUBMITTED'
+                        ? 'Đã tiếp nhận (Chờ duyệt)'
+                        : selectedReport.status === 'REJECTED'
+                        ? 'Bị từ chối'
+                        : selectedReport.status === 'EXPIRED'
+                        ? 'Quá hạn'
+                        : selectedReport.status === 'NOT_REPORTING'
+                        ? 'Chưa báo cáo'
+                        : 'Đang báo cáo'}
                     </span>
                   </div>
                 </div>
@@ -1167,10 +1186,12 @@ export const AccidentAdmin = () => {
                       className="w-full px-1.5 py-1 border border-gray-200 rounded text-[11px] font-normal text-gray-700 bg-white focus:outline-none focus:border-blue-500 cursor-pointer"
                     >
                       <option value="">Trạng thái</option>
+                      <option value="NOT_REPORTING">Chưa báo cáo</option>
                       <option value="DRAFT">Đang báo cáo</option>
-                      <option value="SUBMITTED">Đã tiếp nhận</option>
+                      <option value="SUBMITTED">Chờ duyệt (Đã tiếp nhận)</option>
                       <option value="APPROVED">Đã duyệt</option>
                       <option value="REJECTED">Bị từ chối</option>
+                      <option value="EXPIRED">Quá hạn</option>
                     </select>
                   </th>
                 </tr>
@@ -1250,10 +1271,24 @@ export const AccidentAdmin = () => {
                               : report.status === 'SUBMITTED'
                               ? 'bg-blue-50 text-blue-600 border-blue-200'
                               : report.status === 'REJECTED'
-                              ? 'bg-red-50 text-red-600 border-red-200'
-                              : 'bg-gray-50 text-gray-400 border-gray-200'
+                              ? 'bg-rose-50 text-rose-600 border-rose-200'
+                              : report.status === 'EXPIRED'
+                              ? 'bg-gray-100 text-gray-500 border-gray-300'
+                              : report.status === 'NOT_REPORTING'
+                              ? 'bg-slate-100 text-slate-600 border-slate-300'
+                              : 'bg-amber-50 text-amber-600 border-amber-200'
                           }`}>
-                            {report.status === 'APPROVED' ? 'Đã duyệt' : report.status === 'SUBMITTED' ? 'Đã tiếp nhận' : report.status === 'REJECTED' ? 'Từ chối' : 'Đang báo cáo'}
+                            {report.status === 'APPROVED'
+                              ? 'Đã duyệt'
+                              : report.status === 'SUBMITTED'
+                              ? 'Đã tiếp nhận'
+                              : report.status === 'REJECTED'
+                              ? 'Từ chối'
+                              : report.status === 'EXPIRED'
+                              ? 'Quá hạn'
+                              : report.status === 'NOT_REPORTING'
+                              ? 'Chưa báo cáo'
+                              : 'Đang báo cáo'}
                           </span>
                         </div>
                       </td>
@@ -1573,7 +1608,7 @@ export const AccidentAdmin = () => {
                   onChange={(e) => {
                     const yr = Number(e.target.value);
                     setConfigYear(yr);
-                    setConfigName(`Báo cáo tình hình tai nạn lao động ${configPeriod === '6 months' ? '6 tháng đầu năm' : 'cả năm'} ${yr}`);
+                    setConfigName(`Báo cáo tình hình tai nạn lao động ${configPeriod === '6 months' ? '6 tháng' : 'cả năm'} ${yr}`);
                   }}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:outline-none focus:border-blue-500"
                   required
@@ -1589,13 +1624,13 @@ export const AccidentAdmin = () => {
                   onChange={(e) => {
                     const p = e.target.value as ApiReportPeriod;
                     setConfigPeriod(p);
-                    setConfigName(`Báo cáo tình hình tai nạn lao động ${p === '6 months' ? '6 tháng đầu năm' : 'cả năm'} ${configYear}`);
+                    setConfigName(`Báo cáo tình hình tai nạn lao động ${p === '6 months' ? '6 tháng' : 'cả năm'} ${configYear}`);
                   }}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:outline-none focus:border-blue-500 cursor-pointer"
                   required
                 >
-                  <option value="6 months">Báo cáo 6 tháng đầu năm</option>
-                  <option value="12 months">Báo cáo cả năm (12 tháng)</option>
+                  <option value="6 months">6 tháng</option>
+                  <option value="12 months">Cả năm</option>
                 </select>
               </div>
 

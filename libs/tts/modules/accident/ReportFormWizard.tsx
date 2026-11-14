@@ -287,6 +287,8 @@ export const ReportFormWizard: React.FC<WizardProps> = ({ reportId }) => {
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [reportYear, setReportYear] = useState<string>('2022');
+  const [reportStatus, setReportStatus] = useState<string>('');
+  const [rejectionReason, setRejectionReason] = useState<string>('');
   const [showCancelWarning, setShowCancelWarning] = useState<boolean>(false);
   const [errors, setErrors] = useState<FormErrorsState>({});
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
@@ -449,6 +451,8 @@ useEffect(() => {
         const pName = periodParam === '12 months' ? 'Cả năm' : '6 tháng';
         setPeriodName(pName);
       } else {
+        setReportStatus(report.status || '');
+        setRejectionReason(report.note || '');
         const pName = report.period === '12 months' ? 'Cả năm' : '6 tháng';
         setPeriodName(pName);
         if (report.year) {
@@ -1894,6 +1898,30 @@ const handleConfirmSubmit = async () => {
 
       <div className="p-6 space-y-4 flex-1 flex flex-col justify-start bg-white  ">
         
+        {reportStatus === 'rejected' && (
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow-sm no-print">
+            <div className="flex items-start gap-3">
+              <div className="text-red-500 mt-0.5 shrink-0">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xs font-bold text-red-800 uppercase tracking-wide mb-1 flex items-center gap-1.5">
+                  <span>⚠️</span> Báo cáo đã bị Sở Lao động - Thương binh và Xã hội từ chối tiếp nhận
+                </h3>
+                <div className="text-xs text-red-700 bg-white/80 border border-red-200 rounded p-2.5 my-2">
+                  <span className="font-semibold text-red-900 block mb-0.5">Lý do từ chối:</span>
+                  <p className="whitespace-pre-wrap">{rejectionReason || "Báo cáo chưa hợp lệ, vui lòng kiểm tra và chỉnh sửa lại."}</p>
+                </div>
+                <p className="text-[11px] text-red-600 font-medium">
+                  👉 Vui lòng kiểm tra lại số liệu, chỉnh sửa và nộp lại báo cáo.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="w-full no-print">
           <label className="text-[11px] font-bold text-gray-400 block mb-1">Chọn mục báo cáo</label>
           <select 

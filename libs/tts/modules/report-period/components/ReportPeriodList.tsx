@@ -59,11 +59,15 @@ export const ReportPeriodList = () => {
 
   const parseName = (fullName: string) => {
     let guessedPeriodType = 'Cả năm';
-    if (fullName.includes('6 tháng đầu năm')) guessedPeriodType = '6 tháng đầu năm';
-    else if (fullName.includes('6 tháng cuối năm')) guessedPeriodType = '6 tháng cuối năm';
+    if (fullName.includes('6 tháng')) guessedPeriodType = '6 tháng';
+    else if (fullName.includes('Cả năm') || fullName.includes('12 tháng')) guessedPeriodType = 'Cả năm';
 
     const guessedReportName = fullName
-      .replace(guessedPeriodType, '')
+      .replace('6 tháng đầu năm', '')
+      .replace('6 tháng cuối năm', '')
+      .replace('6 tháng', '')
+      .replace('Cả năm', '')
+      .replace('12 tháng', '')
       .replace(/năm \d{4}/g, '')
       .trim();
 
@@ -79,6 +83,8 @@ export const ReportPeriodList = () => {
       let periodParam: any = undefined;
       if (filterPeriodType === 'Cả năm') {
         periodParam = '12 months';
+      } else if (filterPeriodType === '6 tháng') {
+        periodParam = '6 months';
       }
 
       let statusBool: boolean | undefined = undefined;

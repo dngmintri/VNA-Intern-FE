@@ -32,7 +32,7 @@ export interface ReportData {
   companyName: string;
   taxCode: string;
   period: string;
-  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'NOT_REPORTING';
   year: number;
   province: string;
   ward: string;

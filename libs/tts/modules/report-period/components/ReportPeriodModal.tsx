@@ -72,14 +72,10 @@ export const ReportPeriodModal: React.FC<ReportPeriodModalProps> = ({
         setValue('startDate', `${watchYear}-01-01`);
         setValue('endDate', `${watchYear}-12-31`);
         setValue('dueDate', `${watchYear + 1}-01-15`);
-      } else if (watchPeriodType === '6 tháng đầu năm') {
+      } else if (watchPeriodType === '6 tháng' || watchPeriodType === '6 tháng đầu năm') {
         setValue('startDate', `${watchYear}-01-01`);
         setValue('endDate', `${watchYear}-06-30`);
         setValue('dueDate', `${watchYear}-07-15`);
-      } else if (watchPeriodType === '6 tháng cuối năm') {
-        setValue('startDate', `${watchYear}-07-01`);
-        setValue('endDate', `${watchYear}-12-31`);
-        setValue('dueDate', `${watchYear + 1}-01-15`);
       }
     }
   }, [watchYear, watchPeriodType, isEdit, setValue]);
@@ -94,25 +90,24 @@ export const ReportPeriodModal: React.FC<ReportPeriodModalProps> = ({
             let guessedReportName = 'Báo cáo tai nạn lao động';
             let guessedPeriodType = 'Cả năm';
 
-            if (data.period === '6 months start year' || data.period === '6 months') {
-              guessedPeriodType = '6 tháng đầu năm';
-            } else if (data.period === '6 months end year') {
-              guessedPeriodType = '6 tháng cuối năm';
+            if (data.period === '6 months start year' || data.period === '6 months' || data.period === '6 months end year') {
+              guessedPeriodType = '6 tháng';
             } else if (data.period === '12 months') {
               guessedPeriodType = 'Cả năm';
             }
 
             if (data.name) {
-              if (data.name.includes('6 tháng đầu năm')) {
-                guessedPeriodType = '6 tháng đầu năm';
-              } else if (data.name.includes('6 tháng cuối năm')) {
-                guessedPeriodType = '6 tháng cuối năm';
+              if (data.name.includes('6 tháng')) {
+                guessedPeriodType = '6 tháng';
               } else if (data.name.includes('Cả năm')) {
                 guessedPeriodType = 'Cả năm';
               }
 
               guessedReportName = data.name
-                .replace(guessedPeriodType, '')
+                .replace('6 tháng đầu năm', '')
+                .replace('6 tháng cuối năm', '')
+                .replace('6 tháng', '')
+                .replace('Cả năm', '')
                 .replace(/năm \d{4}/, '')
                 .trim();
             }
@@ -156,10 +151,8 @@ export const ReportPeriodModal: React.FC<ReportPeriodModalProps> = ({
 
   const onSubmit = async (values: ReportPeriodFormInput) => {
     let periodEnum = '12 months';
-    if (values.periodType === '6 tháng đầu năm') {
+    if (values.periodType === '6 tháng' || values.periodType === '6 tháng đầu năm') {
       periodEnum = '6 months start year';
-    } else if (values.periodType === '6 tháng cuối năm') {
-      periodEnum = '6 months end year';
     } else if (values.periodType === 'Cả năm') {
       periodEnum = '12 months';
     }
@@ -256,9 +249,8 @@ export const ReportPeriodModal: React.FC<ReportPeriodModalProps> = ({
                 {...register('periodType')}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 text-sm text-gray-800 bg-white"
               >
+                <option value="6 tháng">6 tháng</option>
                 <option value="Cả năm">Cả năm</option>
-                <option value="6 tháng đầu năm">6 tháng đầu năm</option>
-                <option value="6 tháng cuối năm">6 tháng cuối năm</option>
               </select>
               {errors.periodType && (
                 <span className="text-[11px] text-red-500 font-medium">{errors.periodType.message}</span>
