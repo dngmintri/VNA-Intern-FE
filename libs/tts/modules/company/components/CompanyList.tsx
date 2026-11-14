@@ -463,7 +463,7 @@ export const CompanyList = () => {
   };
 
   const handleGpkdUploadClick = (taxCode: string) => {
-    toast('Chức năng tải file đính kèm đang được hoàn thiện ở Backend', { icon: 'ℹ️' });
+    toast('Chức năng tải file đính kèm đang được hoàn thiện ở Backend');
   };
 
   const handleGpkdFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
