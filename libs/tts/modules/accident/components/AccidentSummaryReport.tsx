@@ -78,6 +78,7 @@ export interface SummaryData {
     };
   };
   sectionTwo?: {
+    total?: SummaryTotals;
     byProfession: SummaryClassificationRow[];
     byAccidentCause: SummaryClassificationRow[];
     byInjuryFactor: SummaryClassificationRow[];
@@ -140,50 +141,122 @@ const DEFAULT_INDUSTRIES = [
   'Sản xuất thiết bị điện, điện tử',
   'Vận tải và kho bãi',
   'Nông nghiệp, lâm nghiệp và thủy sản',
+  'Bán buôn và bán lẻ; sửa chữa ô tô, mô tô, xe máy',
+  'Thông tin và truyền thông',
   'Ngành nghề khác',
 ];
 
-const DEFAULT_CAUSES = [
-  'Thiết bị, máy móc không đảm bảo an toàn',
-  'Thiếu phương tiện bảo vệ cá nhân hoặc không sử dụng',
-  'Vi phạm quy trình, quy chuẩn an toàn lao động',
-  'Tổ chức lao động, điều kiện làm việc không an toàn',
-  'Người lao động chưa được huấn luyện an toàn lao động',
-  'Nguyên nhân khách quan hoặc nguyên nhân khác',
-];
+const NGUYEN_NHAN_LABELS: Record<string, string> = {
+  thiet_bi_an_toan: 'Không có thiết bị an toàn hoặc thiết bị không đảm bảo an toàn',
+  phuong_tien_bao_ve: 'Không có phương tiện bảo vệ cá nhân hoặc phương tiện bảo vệ cá nhân không tốt',
+  to_chuc_lao_dong: 'Tổ chức lao động không hợp lí',
+  chua_huan_luyen: 'Chưa huấn luyện hoặc huấn luyện an toàn vệ sinh lao động chưa đầy đủ',
+  thieu_quy_trinh_an_toan: 'Không có quy trình an toàn hoặc biện pháp làm việc an toàn',
+  dieu_kien_lam_viec: 'Điều kiện làm việc không tốt',
+  vi_pham_noi_quy: 'Vi phạm nội quy, quy trình, quy chuẩn, biện pháp làm việc an toàn',
+  khong_su_dung_bao_ho: 'Không sử dụng phương tiện bảo vệ cá nhân',
+  nguyen_nhan_khach_quan: 'Khách quan khó tránh, nguyên nhân chưa kể đến',
+};
+
+const DEFAULT_CAUSES = Object.values(NGUYEN_NHAN_LABELS);
 
 const DEFAULT_INJURY_FACTORS = [
-  'Ngã cao, sập đổ giàn giáo',
-  'Vật rơi, đổ, đè, sập',
-  'Máy móc, thiết bị cuốn, kẹp, cắt, cán',
-  'Điện giật, tiếp xúc nguồn điện',
-  'Cháy, nổ, bỏng nhiệt',
-  'Hóa chất độc hại, ngạt khí độc',
-  'Tai nạn giao thông trong khi làm việc',
-  'Yếu tố gây chấn thương khác',
+  'Thiết bị nâng',
+  'Dây cáp/xích',
+  'Xe nâng/phương tiện vận chuyển',
+  'Máy cơ khí/chế biến gỗ',
+  'Điện/nhiệt',
+  'Hóa chất độc hại',
+  'Rơi ngã từ trên cao',
+  'Sạt lở đất/đá',
+  'Các yếu tố khác',
 ];
 
-const createEmptyClassificationRows = (
+const buildClassificationGroupRows = (
   catName: string,
-  subNames: string[]
+  defaultItems: string[],
+  serverChildren: any[] = [],
+  nameResolver?: (rawName: string) => string
 ): SummaryClassificationRow[] => {
-  return subNames.map((name, idx) => ({
-    categoryName: catName,
-    subCategoryName: name,
+  const rowsMap = new Map<string, SummaryClassificationRow>();
+
+  // 1. Khởi tạo danh mục mẫu với giá trị 0
+  defaultItems.forEach((name, idx) => {
+    rowsMap.set(name.toLowerCase().trim(), {
+      categoryName: catName,
+      subCategoryName: name,
+      code: String(idx + 1),
+      totalIncidents: 0,
+      fatalIncidents: 0,
+      multipleVictimIncidents: 0,
+      totalVictims: 0,
+      femaleVictims: 0,
+      fatalities: 0,
+      seriouslyInjured: 0,
+      totalLeaveDays: 0,
+      totalExpense: 0,
+      medicalExpense: 0,
+      treatmentSalaryExpense: 0,
+      compensationExpense: 0,
+      propertyDamageExpense: 0,
+    });
+  });
+
+  // 2. Ghép dữ liệu thực tế từ backend
+  serverChildren.forEach((item) => {
+    const rawName = item.ngheNghiep || item.nguyenNhanTaiNan || item.yeuToChanThuong || item.name || '';
+    const resolvedName = (nameResolver ? nameResolver(rawName) : rawName) || 'Khác';
+    const key = resolvedName.toLowerCase().trim();
+
+    let target = rowsMap.get(key);
+    if (!target) {
+      for (const [defKey, defRow] of rowsMap.entries()) {
+        if (defKey.includes(key) || key.includes(defKey)) {
+          target = defRow;
+          break;
+        }
+      }
+    }
+
+    if (target) {
+      target.totalIncidents = (target.totalIncidents || 0) + (Number(item.totalAccident) || Number(item.totalIncidents) || 0);
+      target.fatalIncidents = (target.fatalIncidents || 0) + (Number(item.totalAccidentDeath) || Number(item.fatalIncidents) || 0);
+      target.multipleVictimIncidents = (target.multipleVictimIncidents || 0) + (Number(item.totalHumanInjuredMore2) || 0);
+      target.totalVictims = (target.totalVictims || 0) + (Number(item.totalHumanInjured) || Number(item.totalVictims) || 0);
+      target.femaleVictims = (target.femaleVictims || 0) + (Number(item.totalFemaleInjured) || 0);
+      target.fatalities = (target.fatalities || 0) + (Number(item.totalHumanDeath) || 0);
+      target.seriouslyInjured = (target.seriouslyInjured || 0) + (Number(item.totalHumanInjuredHeavy) || 0);
+      target.totalLeaveDays = (target.totalLeaveDays || 0) + (Number(item.totalDayOff) || 0);
+      target.totalExpense = (target.totalExpense || 0) + (Number(item.totalBudget) || 0);
+      target.medicalExpense = (target.medicalExpense || 0) + (Number(item.budgetMedical) || 0);
+      target.treatmentSalaryExpense = (target.treatmentSalaryExpense || 0) + (Number(item.budgetSalary) || 0);
+      target.compensationExpense = (target.compensationExpense || 0) + (Number(item.budgetHelp) || 0);
+      target.propertyDamageExpense = (target.propertyDamageExpense || 0) + (Number(item.totalThietHai) || 0);
+    } else {
+      rowsMap.set(key, {
+        categoryName: catName,
+        subCategoryName: resolvedName,
+        code: String(rowsMap.size + 1),
+        totalIncidents: Number(item.totalAccident) || Number(item.totalIncidents) || 0,
+        fatalIncidents: Number(item.totalAccidentDeath) || Number(item.fatalIncidents) || 0,
+        multipleVictimIncidents: Number(item.totalHumanInjuredMore2) || 0,
+        totalVictims: Number(item.totalHumanInjured) || Number(item.totalVictims) || 0,
+        femaleVictims: Number(item.totalFemaleInjured) || 0,
+        fatalities: Number(item.totalHumanDeath) || 0,
+        seriouslyInjured: Number(item.totalHumanInjuredHeavy) || 0,
+        totalLeaveDays: Number(item.totalDayOff) || 0,
+        totalExpense: Number(item.totalBudget) || 0,
+        medicalExpense: Number(item.budgetMedical) || 0,
+        treatmentSalaryExpense: Number(item.budgetSalary) || 0,
+        compensationExpense: Number(item.budgetHelp) || 0,
+        propertyDamageExpense: Number(item.totalThietHai) || 0,
+      });
+    }
+  });
+
+  return Array.from(rowsMap.values()).map((row, idx) => ({
+    ...row,
     code: String(idx + 1),
-    totalIncidents: 0,
-    fatalIncidents: 0,
-    multipleVictimIncidents: 0,
-    totalVictims: 0,
-    femaleVictims: 0,
-    fatalities: 0,
-    seriouslyInjured: 0,
-    totalLeaveDays: 0,
-    totalExpense: 0,
-    medicalExpense: 0,
-    treatmentSalaryExpense: 0,
-    compensationExpense: 0,
-    propertyDamageExpense: 0,
   }));
 };
 
@@ -245,51 +318,56 @@ export const AccidentSummaryReport = ({ onBack }: Props) => {
         let profRows: SummaryClassificationRow[] = [];
         let causeRows: SummaryClassificationRow[] = [];
         let factorRows: SummaryClassificationRow[] = [];
+        let backendTotalSectionTwo: SummaryTotals | null = null;
 
         if (statsRes.status === 'fulfilled' && statsRes.value.data?.data) {
           const statsCategories = statsRes.value.data.data;
+          const totalGroup = statsCategories.find((c: any) => c.code === 'TOTAL');
           const ngheNghiepGroup = statsCategories.find((c: any) => c.code === 'NGHE_NGHIEP');
           const causeGroup = statsCategories.find((c: any) => c.code === 'CAUSE');
           const factorGroup = statsCategories.find((c: any) => c.code === 'INJURY_FACTOR');
 
-          const mapClassRow = (item: any, catName: string, idx: number): SummaryClassificationRow => ({
-            categoryName: catName,
-            subCategoryName: item.ngheNghiep || item.nguyenNhanTaiNan || item.yeuToChanThuong || item.name || 'Khác',
-            code: String(idx + 1),
-            totalIncidents: Number(item.totalAccident) || Number(item.totalIncidents) || 0,
-            fatalIncidents: Number(item.totalAccidentDeath) || Number(item.fatalIncidents) || 0,
-            multipleVictimIncidents: Number(item.totalHumanInjuredMore2) || 0,
-            totalVictims: Number(item.totalHumanInjured) || Number(item.totalVictims) || 0,
-            femaleVictims: Number(item.totalFemaleInjured) || 0,
-            fatalities: Number(item.totalHumanDeath) || 0,
-            seriouslyInjured: Number(item.totalHumanInjuredHeavy) || 0,
-            totalLeaveDays: Number(item.totalDayOff) || 0,
-            totalExpense: Number(item.totalBudget) || 0,
-            medicalExpense: Number(item.budgetMedical) || 0,
-            treatmentSalaryExpense: Number(item.budgetSalary) || 0,
-            compensationExpense: Number(item.budgetHelp) || 0,
-            propertyDamageExpense: Number(item.totalThietHai) || 0,
-          });
+          if (totalGroup?.statistics) {
+            const s = totalGroup.statistics;
+            backendTotalSectionTwo = {
+              totalIncidents: Number(s.totalAccident) || 0,
+              fatalIncidents: Number(s.totalAccidentDeath) || 0,
+              multipleVictimIncidents: Number(s.totalHumanInjuredMore2) || 0,
+              totalVictims: Number(s.totalHumanInjured) || 0,
+              femaleVictims: Number(s.totalFemaleInjured) || 0,
+              fatalities: Number(s.totalHumanDeath) || 0,
+              seriouslyInjured: Number(s.totalHumanInjuredHeavy) || 0,
+              totalLeaveDays: Number(s.totalDayOff) || 0,
+              totalExpense: Number(s.totalBudget) || 0,
+              medicalExpense: Number(s.budgetMedical) || 0,
+              treatmentSalaryExpense: Number(s.budgetSalary) || 0,
+              compensationExpense: Number(s.budgetHelp) || 0,
+              propertyDamageExpense: Number(s.totalThietHai) || 0,
+            };
+          }
 
-          if (ngheNghiepGroup?.children?.length) {
-            profRows = ngheNghiepGroup.children.map((c: any, idx: number) => mapClassRow(c, 'Phân theo ngành nghề', idx));
-          }
-          if (causeGroup?.children?.length) {
-            causeRows = causeGroup.children.map((c: any, idx: number) => mapClassRow(c, 'Phân theo nguyên nhân', idx));
-          }
-          if (factorGroup?.children?.length) {
-            factorRows = factorGroup.children.map((c: any, idx: number) => mapClassRow(c, 'Phân theo yếu tố gây chấn thương', idx));
-          }
-        }
+          profRows = buildClassificationGroupRows(
+            'Phân theo ngành nghề',
+            DEFAULT_INDUSTRIES,
+            ngheNghiepGroup?.children || []
+          );
 
-        if (profRows.length === 0) {
-          profRows = createEmptyClassificationRows('Phân theo ngành nghề', DEFAULT_INDUSTRIES);
-        }
-        if (causeRows.length === 0) {
-          causeRows = createEmptyClassificationRows('Phân theo nguyên nhân', DEFAULT_CAUSES);
-        }
-        if (factorRows.length === 0) {
-          factorRows = createEmptyClassificationRows('Phân theo yếu tố gây chấn thương', DEFAULT_INJURY_FACTORS);
+          causeRows = buildClassificationGroupRows(
+            'Phân theo nguyên nhân',
+            DEFAULT_CAUSES,
+            causeGroup?.children || [],
+            (raw) => NGUYEN_NHAN_LABELS[raw] || raw
+          );
+
+          factorRows = buildClassificationGroupRows(
+            'Phân theo yếu tố gây chấn thương',
+            DEFAULT_INJURY_FACTORS,
+            factorGroup?.children || []
+          );
+        } else {
+          profRows = buildClassificationGroupRows('Phân theo ngành nghề', DEFAULT_INDUSTRIES, []);
+          causeRows = buildClassificationGroupRows('Phân theo nguyên nhân', DEFAULT_CAUSES, []);
+          factorRows = buildClassificationGroupRows('Phân theo yếu tố gây chấn thương', DEFAULT_INJURY_FACTORS, []);
         }
 
         const totalOverview = rows.reduce((acc, curr) => ({
@@ -322,6 +400,7 @@ export const AccidentSummaryReport = ({ onBack }: Props) => {
             total: totalOverview as any,
           },
           sectionTwo: {
+            total: backendTotalSectionTwo || undefined,
             byProfession: profRows,
             byAccidentCause: causeRows,
             byInjuryFactor: factorRows,
@@ -398,7 +477,7 @@ export const AccidentSummaryReport = ({ onBack }: Props) => {
     });
   };
 
-  const totalsByGroup = calculateTotals();
+  const totalsByGroup = summaryData?.sectionTwo?.total || calculateTotals();
 
   const renderCategoryRows = (
     groupName: 'Phân theo ngành nghề' | 'Phân theo nguyên nhân' | 'Phân theo yếu tố gây chấn thương',
@@ -409,12 +488,12 @@ export const AccidentSummaryReport = ({ onBack }: Props) => {
       return (
         <tr className="hover:bg-gray-50/50">
           <td 
-            className="py-2 px-1 border-r border-gray-200 text-center font-bold text-gray-900 bg-gray-50/80 align-middle w-20 whitespace-normal break-words text-[9px] leading-tight" 
+            className="py-2 px-1 border-r border-gray-200 text-center font-bold text-gray-900 bg-gray-50/80 align-middle w-24 whitespace-normal break-words text-[9px] leading-tight" 
             rowSpan={1}
           >
             {groupName}
           </td>
-          <td className="py-2 px-2 border-r border-gray-200 text-left text-gray-400 italic w-32 whitespace-normal break-words text-[9px] leading-tight pl-2">
+          <td className="py-2 px-2 border-r border-gray-200 text-left text-gray-400 italic w-44 whitespace-normal break-words text-[9px] leading-tight pl-2">
             Không có dữ liệu
           </td>
           <td className="py-2.5 px-1.5 border-r border-gray-200 text-gray-400 font-mono">-</td>
@@ -439,14 +518,14 @@ export const AccidentSummaryReport = ({ onBack }: Props) => {
       <tr key={`${rowKeyPrefix}-${idx}`} className="hover:bg-gray-50/50">
         {idx === 0 && (
           <td 
-            className="py-2 px-1 border-r border-gray-200 text-center font-bold text-gray-900 bg-gray-50/80 align-middle w-20 whitespace-normal break-words text-[9px] leading-tight" 
+            className="py-2 px-1 border-r border-gray-200 text-center font-bold text-gray-900 bg-gray-50/80 align-middle w-24 whitespace-normal break-words text-[9px] leading-tight" 
             rowSpan={rowsList.length}
           >
             {groupName}
           </td>
         )}
-        <td className="py-2 px-2 border-r border-gray-200 text-left text-gray-700 w-32 whitespace-normal break-words text-[9px] leading-tight pl-2">
-          {row.categoryName || row.subCategoryName || ''}
+        <td className="py-2 px-2 border-r border-gray-200 text-left text-gray-700 w-44 whitespace-normal break-words text-[9px] leading-tight pl-2">
+          {row.subCategoryName || ''}
         </td>
         <td className="py-2.5 px-1.5 border-r border-gray-200 text-gray-700 text-center font-medium">
           {idx + 1}
