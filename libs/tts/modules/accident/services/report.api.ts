@@ -176,10 +176,10 @@ export const reportApi = {
   }) =>
     api.get<any>('/reports/by-year', { params }),
 
-  getOverview: (year: number, period?: ReportPeriod) =>
+  getOverview: (year?: number, period?: ReportPeriod) =>
     api.get<any>('/reports/overview', { params: { year, period } }),
 
-  getAccidentStatistics: (year: number, period?: ReportPeriod) =>
+  getAccidentStatistics: (year?: number, period?: ReportPeriod) =>
     api.get<any>('/reports/accident-statistics', { params: { year, period } }),
 
   // Cấu hình kỳ báo cáo
