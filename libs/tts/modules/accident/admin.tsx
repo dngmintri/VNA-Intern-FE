@@ -39,6 +39,14 @@ interface ReportItem extends Omit<RelationalReport, 'id' | 'status'> {
   attachmentName?: string | null;
 }
 
+const QUICK_REJECT_REASONS = [
+  'Thiếu file đính kèm báo cáo có ký tên và đóng dấu',
+  'Số liệu mục II chưa khớp với danh sách chi tiết tai nạn',
+  'Chưa giải trình chi tiết các vụ tai nạn lao động nặng/chết người',
+  'Số liệu lao động hoặc chi phí thiệt hại chưa chính xác',
+  'Báo cáo sai kỳ hoặc thông tin doanh nghiệp chưa cập nhật',
+];
+
 interface RawReport {
   id: number;
   status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'EXPIRED' | 'NOT_REPORTING';
@@ -380,6 +388,8 @@ export const AccidentAdmin = () => {
   const [showRejectModal, setShowRejectModal] = useState<boolean>(false);
   const [rejectReasons, setRejectReasons] = useState<Record<string | number, string>>({});
   const [rejectTargetIds, setRejectTargetIds] = useState<(number | string)[]>([]);
+  const [rejectMode, setRejectMode] = useState<'COMMON' | 'INDIVIDUAL'>('COMMON');
+  const [commonRejectReason, setCommonRejectReason] = useState<string>('');
   const [showApproveConfirmModal, setShowApproveConfirmModal] = useState<boolean>(false);
   const [approveConfirmTargetIds, setApproveConfirmTargetIds] = useState<(number | string)[]>([]);
   const [periods, setPeriods] = useState<ReportPeriod[]>([]);
@@ -647,6 +657,10 @@ export const AccidentAdmin = () => {
     return r?.companyName || selectedReport?.companyName || 'Báo cáo';
   };
 
+  const getReportItem = (reportId: number | string) => {
+    return reports.find(item => item.id === reportId) || (selectedReport?.id === reportId ? selectedReport : null);
+  };
+
   const handleBatchRejectClick = () => {
     if (selectedIds.length === 0) return;
     
@@ -662,42 +676,77 @@ export const AccidentAdmin = () => {
       initialReasons[id] = '';
     });
     setRejectReasons(initialReasons);
+    setCommonRejectReason('');
+    setRejectMode('COMMON');
     setShowRejectModal(true);
   };
 
   const handleConfirmReject = async () => {
-    const emptyIds = rejectTargetIds.filter(id => !rejectReasons[id]?.trim());
-    if (emptyIds.length > 0) {
-      toast.error('Vui lòng nhập lý do từ chối cho tất cả báo cáo!');
-      return;
-    }
-
-    try {
-      await Promise.all(
-        rejectTargetIds.map(id =>
-          api.patch('/so/reports/reject', {
-            reportIds: [id],
-            note: rejectReasons[id].trim()
-          })
-        )
-      );
-
-      toast.success(`Đã từ chối ${rejectTargetIds.length} báo cáo.`);
-      setReports(prev => prev.map(r => rejectTargetIds.includes(r.id) ? { ...r, status: 'REJECTED' } : r));
-      if (selectedReport && rejectTargetIds.includes(selectedReport.id)) {
-        setSelectedReport(prev => prev ? { ...prev, status: 'REJECTED' } : null);
+    if (rejectMode === 'COMMON') {
+      if (!commonRejectReason.trim()) {
+        toast.error('Vui lòng nhập lý do từ chối!');
+        return;
       }
-      setShowRejectModal(false);
-      setSelectedIds([]);
-      setRejectTargetIds([]);
-      setRejectReasons({});
-      if (viewMode === 'DETAIL') {
-        setViewMode('LIST');
+
+      try {
+        await api.patch('/so/reports/reject', {
+          reportIds: rejectTargetIds,
+          note: commonRejectReason.trim(),
+        });
+
+        toast.success(`Đã từ chối ${rejectTargetIds.length} báo cáo.`);
+        setReports(prev => prev.map(r => rejectTargetIds.includes(r.id) ? { ...r, status: 'REJECTED' } : r));
+        if (selectedReport && rejectTargetIds.includes(selectedReport.id)) {
+          setSelectedReport(prev => prev ? { ...prev, status: 'REJECTED' } : null);
+        }
+        setShowRejectModal(false);
+        setSelectedIds([]);
+        setRejectTargetIds([]);
+        setRejectReasons({});
+        setCommonRejectReason('');
+        if (viewMode === 'DETAIL') {
+          setViewMode('LIST');
+        }
+        fetchReports();
+      } catch (err) {
+        console.error(err);
+        toast.error('Từ chối báo cáo thất bại');
       }
-      fetchReports();
-    } catch (err) {
-      console.error(err);
-      toast.error('Từ chối báo cáo thất bại');
+    } else {
+      const emptyIds = rejectTargetIds.filter(id => !rejectReasons[id]?.trim());
+      if (emptyIds.length > 0) {
+        toast.error('Vui lòng nhập lý do từ chối cho tất cả báo cáo!');
+        return;
+      }
+
+      try {
+        await Promise.all(
+          rejectTargetIds.map(id =>
+            api.patch('/so/reports/reject', {
+              reportIds: [id],
+              note: rejectReasons[id].trim()
+            })
+          )
+        );
+
+        toast.success(`Đã từ chối ${rejectTargetIds.length} báo cáo.`);
+        setReports(prev => prev.map(r => rejectTargetIds.includes(r.id) ? { ...r, status: 'REJECTED' } : r));
+        if (selectedReport && rejectTargetIds.includes(selectedReport.id)) {
+          setSelectedReport(prev => prev ? { ...prev, status: 'REJECTED' } : null);
+        }
+        setShowRejectModal(false);
+        setSelectedIds([]);
+        setRejectTargetIds([]);
+        setRejectReasons({});
+        setCommonRejectReason('');
+        if (viewMode === 'DETAIL') {
+          setViewMode('LIST');
+        }
+        fetchReports();
+      } catch (err) {
+        console.error(err);
+        toast.error('Từ chối báo cáo thất bại');
+      }
     }
   };
 
@@ -822,6 +871,8 @@ export const AccidentAdmin = () => {
                     onClick={() => {
                       setRejectTargetIds([selectedReport.id]);
                       setRejectReasons({ [selectedReport.id]: '' });
+                      setCommonRejectReason('');
+                      setRejectMode('COMMON');
                       setShowRejectModal(true);
                     }}
                     className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold shadow-sm transition-colors cursor-pointer"
@@ -1397,58 +1448,257 @@ export const AccidentAdmin = () => {
 
       {showRejectModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[110] p-4 select-none animate-fadeIn">
-          <div className="bg-white rounded-2xl w-full max-w-[420px] shadow-2xl overflow-hidden border border-gray-150 font-sans text-gray-700">
-            <div className="bg-red-600 text-white font-bold text-sm uppercase py-4 px-6 text-center tracking-wider">
-              Lý do từ chối báo cáo
-            </div>
-            
-            <div className="p-6 space-y-4 text-xs">
-              <label className="block text-xs font-bold text-gray-400 uppercase">
-                Lý do từ chối nộp báo cáo:
-              </label>
-              <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
-                {rejectTargetIds.map((id) => (
-                  <div key={id} className="space-y-1.5 border-b border-gray-100 pb-3 last:border-0 last:pb-0">
-                    <div className="font-bold text-gray-700 text-[11px] uppercase tracking-wide">
-                      {getCompanyName(id)}
-                    </div>
-                    <textarea
-                      value={rejectReasons[id] || ''}
-                      onChange={(e) => {
-                        setRejectReasons(prev => ({
-                          ...prev,
-                          [id]: e.target.value
-                        }));
-                      }}
-                      placeholder="Nhập lý do từ chối..."
-                      className="w-full border border-gray-200 rounded-lg p-2.5 text-xs bg-gray-50 focus:outline-none focus:border-red-500 h-20 leading-relaxed font-normal text-gray-800 placeholder-gray-400"
-                    />
+          <div className="bg-white rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden border border-gray-150 font-sans text-gray-700 flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-red-600 flex-shrink-0">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-gray-900 text-sm">Từ chối tiếp nhận báo cáo</h3>
+                    <span className="bg-red-50 text-red-600 border border-red-200/60 text-[11px] font-semibold px-2 py-0.5 rounded-full">
+                      {rejectTargetIds.length} báo cáo
+                    </span>
                   </div>
-                ))}
+                  <p className="text-gray-500 text-xs mt-0.5">
+                    Nhập lý do từ chối để gửi thông báo hướng dẫn doanh nghiệp chỉnh sửa và nộp lại
+                  </p>
+                </div>
               </div>
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[10px] text-amber-800 leading-relaxed font-medium">
-                **Lưu ý:** Hành động từ chối báo cáo này không thể hoàn tác sau khi xác nhận. Lý do từ chối sẽ được gửi trực tiếp cho doanh nghiệp để họ điều chỉnh và nộp lại báo cáo.
-              </div>
-            </div>
-            
-            <div className="bg-gray-50 border-t border-gray-100 px-6 py-3.5 flex items-center justify-end gap-3">
               <button
                 type="button"
                 onClick={() => {
                   setShowRejectModal(false);
                   setRejectTargetIds([]);
+                  setCommonRejectReason('');
                 }}
-                className="px-4 py-1.5 border border-gray-200 text-gray-500 hover:bg-gray-50 rounded-lg text-xs font-bold transition-all cursor-pointer bg-white"
+                className="text-gray-400 hover:text-gray-600 w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors cursor-pointer text-base"
+                title="Đóng"
               >
-                Hủy bỏ
+                ✕
               </button>
-              <button
-                type="button"
-                onClick={handleConfirmReject}
-                className="px-4 py-1.5 bg-red-600 text-white hover:bg-red-700 rounded-lg text-xs font-bold shadow-sm transition-all cursor-pointer"
-              >
-                Xác nhận từ chối
-              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-4 text-xs overflow-y-auto flex-1">
+              {/* Tab chuyển đổi chế độ nếu có từ 2 báo cáo trở lên */}
+              {rejectTargetIds.length > 1 && (
+                <div className="bg-gray-100/80 p-1 rounded-xl flex items-center gap-1 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setRejectMode('COMMON')}
+                    className={`flex-1 py-1.5 px-3 rounded-lg font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      rejectMode === 'COMMON'
+                        ? 'bg-white text-gray-900 shadow-sm font-semibold'
+                        : 'text-gray-500 hover:text-gray-800'
+                    }`}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+                    </svg>
+                    Áp dụng chung ({rejectTargetIds.length} báo cáo)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRejectMode('INDIVIDUAL')}
+                    className={`flex-1 py-1.5 px-3 rounded-lg font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      rejectMode === 'INDIVIDUAL'
+                        ? 'bg-white text-gray-900 shadow-sm font-semibold'
+                        : 'text-gray-500 hover:text-gray-800'
+                    }`}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                    </svg>
+                    Nhập riêng từng doanh nghiệp
+                  </button>
+                </div>
+              )}
+
+              {/* Chế độ Áp dụng chung */}
+              {rejectMode === 'COMMON' ? (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                      Lý do từ chối {rejectTargetIds.length > 1 ? '(áp dụng cho toàn bộ doanh nghiệp được chọn)' : ''}: <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      value={commonRejectReason}
+                      onChange={(e) => setCommonRejectReason(e.target.value)}
+                      placeholder="Nhập chi tiết lý do từ chối (ví dụ: Thiếu văn bản scan có chữ ký và đóng dấu của người đại diện theo pháp luật)..."
+                      className="w-full border border-gray-200 rounded-xl p-3 text-xs bg-gray-50/70 focus:bg-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 h-24 leading-relaxed font-normal text-gray-800 placeholder-gray-400 transition-all"
+                    />
+                  </div>
+
+                  {/* Gợi ý nhanh */}
+                  <div>
+                    <div className="text-[11px] font-semibold text-gray-500 mb-1.5 flex items-center gap-1.5">
+                      <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.002 6.002 0 0 0-4-5.659V5.25a2.25 2.25 0 0 1 4.5 0v1.841a6.002 6.002 0 0 0 4 5.659V18m-4.5 0h4.5" />
+                      </svg>
+                      <span>Gợi ý nội dung thường gặp (chọn để thêm):</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {QUICK_REJECT_REASONS.map((reason, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setCommonRejectReason(prev => prev ? `${prev}. ${reason}` : reason);
+                          }}
+                          className="text-[11px] bg-gray-50 hover:bg-red-50 hover:text-red-600 hover:border-red-200 border border-gray-200 text-gray-600 px-2.5 py-1 rounded-lg transition-colors cursor-pointer text-left"
+                        >
+                          + {reason}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Danh sách báo cáo áp dụng */}
+                  <div>
+                    <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                      Danh sách doanh nghiệp ({rejectTargetIds.length}):
+                    </div>
+                    <div className="bg-gray-50/80 rounded-xl p-2.5 border border-gray-200 max-h-36 overflow-y-auto divide-y divide-gray-100">
+                      {rejectTargetIds.map((id) => {
+                        const item = getReportItem(id);
+                        return (
+                          <div key={id} className="py-1.5 first:pt-0 last:pb-0 flex items-center justify-between text-xs">
+                            <div className="min-w-0 pr-2">
+                              <span className="font-semibold text-gray-800 block truncate">
+                                {item?.companyName || getCompanyName(id)}
+                              </span>
+                              <span className="text-[11px] text-gray-400">
+                                MST: {item?.taxCode || '—'}
+                              </span>
+                            </div>
+                            <span className="text-[11px] bg-white border border-gray-200 text-gray-600 px-2 py-0.5 rounded flex-shrink-0 font-medium">
+                              {item?.period || 'Cả năm'} ({item?.year || selectedYear})
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Chế độ Nhập riêng từng doanh nghiệp */
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-gray-700">
+                      Danh sách doanh nghiệp và lý do riêng: <span className="text-red-500">*</span>
+                    </label>
+                    {commonRejectReason && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated: Record<string | number, string> = {};
+                          rejectTargetIds.forEach(id => {
+                            updated[id] = commonRejectReason;
+                          });
+                          setRejectReasons(updated);
+                          toast.success('Đã sao chép lý do chung cho toàn bộ danh sách');
+                        }}
+                        className="text-[11px] text-blue-600 hover:text-blue-700 font-semibold cursor-pointer underline"
+                      >
+                        Sao chép lý do chung cho tất cả
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
+                    {rejectTargetIds.map((id) => {
+                      const item = getReportItem(id);
+                      return (
+                        <div key={id} className="bg-gray-50/80 border border-gray-200 rounded-xl p-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-bold text-gray-800 text-xs">
+                                {item?.companyName || getCompanyName(id)}
+                              </div>
+                              <div className="text-[11px] text-gray-400">
+                                MST: {item?.taxCode || '—'} • Kỳ: {item?.period || 'Cả năm'} ({item?.year || selectedYear})
+                              </div>
+                            </div>
+                          </div>
+                          <textarea
+                            value={rejectReasons[id] || ''}
+                            onChange={(e) => {
+                              setRejectReasons(prev => ({
+                                ...prev,
+                                [id]: e.target.value
+                              }));
+                            }}
+                            placeholder="Nhập lý do từ chối riêng cho doanh nghiệp này..."
+                            className="w-full border border-gray-200 rounded-lg p-2.5 text-xs bg-white focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 h-16 leading-relaxed font-normal text-gray-800 placeholder-gray-400"
+                          />
+                          <div className="flex flex-wrap gap-1">
+                            {QUICK_REJECT_REASONS.slice(0, 3).map((reason, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => {
+                                  setRejectReasons(prev => ({
+                                    ...prev,
+                                    [id]: prev[id] ? `${prev[id]}. ${reason}` : reason
+                                  }));
+                                }}
+                                className="text-[10px] bg-white hover:bg-red-50 hover:text-red-600 border border-gray-200 text-gray-500 px-2 py-0.5 rounded transition-colors cursor-pointer"
+                              >
+                                + {reason}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Alert lưu ý */}
+              <div className="bg-amber-50/80 border border-amber-200/80 rounded-xl p-3 flex items-start gap-2.5 text-[11px] text-amber-800 leading-relaxed font-normal">
+                <svg className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                </svg>
+                <div>
+                  <span className="font-semibold text-amber-900">Lưu ý:</span> Hành động từ chối báo cáo sẽ chuyển trạng thái sang <strong>Từ chối</strong> và gửi trực tiếp lý do này đến tài khoản của doanh nghiệp để họ cập nhật và nộp lại báo cáo.
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="bg-gray-50 border-t border-gray-100 px-6 py-3.5 flex items-center justify-between flex-shrink-0">
+              <span className="text-xs text-gray-400 font-medium">
+                Tổng số: <strong className="text-gray-700">{rejectTargetIds.length}</strong> báo cáo
+              </span>
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRejectModal(false);
+                    setRejectTargetIds([]);
+                    setCommonRejectReason('');
+                  }}
+                  className="px-4 py-1.5 border border-gray-200 text-gray-500 hover:bg-gray-50 rounded-lg text-xs font-bold transition-all cursor-pointer bg-white"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmReject}
+                  className="px-5 py-1.5 bg-red-600 text-white hover:bg-red-700 rounded-lg text-xs font-bold shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                  Xác nhận từ chối
+                </button>
+              </div>
             </div>
           </div>
         </div>

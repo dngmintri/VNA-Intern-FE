@@ -1907,15 +1907,15 @@ const handleConfirmSubmit = async () => {
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-xs font-bold text-red-800 uppercase tracking-wide mb-1 flex items-center gap-1.5">
-                  <span>⚠️</span> Báo cáo đã bị Sở Lao động - Thương binh và Xã hội từ chối tiếp nhận
+                <h3 className="text-xs font-bold text-red-800 uppercase tracking-wide mb-1">
+                  Báo cáo đã bị Sở Lao động - Thương binh và Xã hội từ chối tiếp nhận
                 </h3>
                 <div className="text-xs text-red-700 bg-white/80 border border-red-200 rounded p-2.5 my-2">
                   <span className="font-semibold text-red-900 block mb-0.5">Lý do từ chối:</span>
                   <p className="whitespace-pre-wrap">{rejectionReason || "Báo cáo chưa hợp lệ, vui lòng kiểm tra và chỉnh sửa lại."}</p>
                 </div>
-                <p className="text-[11px] text-red-600 font-medium">
-                  👉 Vui lòng kiểm tra lại số liệu, chỉnh sửa và nộp lại báo cáo.
+                <p className="text-[11px] text-red-700 font-medium">
+                  Đề nghị Doanh nghiệp rà soát lại số liệu, thực hiện chỉnh sửa và nộp lại báo cáo theo đúng quy định.
                 </p>
               </div>
             </div>
