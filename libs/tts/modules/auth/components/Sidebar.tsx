@@ -142,6 +142,7 @@ export const Sidebar = () => {
       localStorage.removeItem('token');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('current_username');
+      localStorage.removeItem('auth-storage');
       window.location.href = '/login';
     }
   };
@@ -217,56 +218,48 @@ export const Sidebar = () => {
   }, [pathname]);
 
   useEffect(() => {
-
     const fetchSidebarUserInfo = async () => {
+      if (typeof window === 'undefined') return;
 
-      try {
-
-        const response = await api.get<SidebarUserResponse>('/users/profile');
-
-        const userData = response.data?.data || response.data;
-
-        
-
-        if (userData) {
-
-          const name = userData.fullName || userData.username || localStorage.getItem('current_username') || 'Người dùng';
-
-          setFullName(name);
-
-          setAvatar(formatAvatarUrl(userData.avatar) || null);
-
-        } else {
-
-          const currentUsername = localStorage.getItem('current_username') || 'Người dùng';
-
-          setFullName(currentUsername);
-
-          setAvatar(null);
-
+      const token = localStorage.getItem('token');
+      const authStorage = localStorage.getItem('auth-storage');
+      let hasToken = !!token;
+      if (!hasToken && authStorage) {
+        try {
+          const parsed = JSON.parse(authStorage);
+          hasToken = !!parsed?.state?.accessToken;
+        } catch {
+          // ignore
         }
-
-      } catch (error) {
-
-        console.error('Lỗi khi lấy tên hiển thị Sidebar:', error);
-
-        if (!fullName) {
-
-          const currentUsername = localStorage.getItem('current_username') || 'Người dùng';
-
-          setFullName(currentUsername);
-
-        }
-
       }
 
+      if (!hasToken) {
+        return;
+      }
+
+      try {
+        const response = await api.get<SidebarUserResponse>('/users/profile');
+        const userData = response.data?.data || response.data;
+
+        if (userData) {
+          const name = userData.fullName || userData.username || localStorage.getItem('current_username') || 'Người dùng';
+          setFullName(name);
+          setAvatar(formatAvatarUrl(userData.avatar) || null);
+        } else {
+          const currentUsername = localStorage.getItem('current_username') || 'Người dùng';
+          setFullName(currentUsername);
+          setAvatar(null);
+        }
+      } catch (error) {
+        const isAuthError = (error as any)?.response?.status === 401;
+        if (!isAuthError) {
+          console.error('Lỗi khi lấy tên hiển thị Sidebar:', error);
+        }
+      }
     };
 
-
-
     fetchSidebarUserInfo();
-
-  }, [setAvatar, setFullName, fullName]);
+  }, []);
 
 
 

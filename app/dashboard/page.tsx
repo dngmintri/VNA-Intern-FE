@@ -19,6 +19,7 @@ export default function DashboardPage() {
             alt="Phần mềm quản lý an toàn vệ sinh lao động minh họa"
             fill
             priority
+            sizes="(max-width: 640px) 100vw, 384px"
             className="object-contain"
           />
         </div>

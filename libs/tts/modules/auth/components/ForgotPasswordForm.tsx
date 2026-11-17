@@ -161,6 +161,7 @@ export const ForgotPasswordForm = () => {
             alt="Quốc huy Việt Nam"
             fill
             priority
+            sizes="80px"
             className="object-contain"
           />
         </div>

@@ -39,6 +39,7 @@ export default function AuthLayout({
               alt="Phần mềm quản lý an toàn vệ sinh lao động minh họa"
               fill
               priority
+              sizes="(max-width: 1024px) 100vw, 50vw"
               className="object-contain"
             />
           </div>
