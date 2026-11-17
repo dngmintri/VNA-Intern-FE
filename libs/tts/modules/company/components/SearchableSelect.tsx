@@ -16,7 +16,26 @@ export interface SearchableSelectProps {
   className?: string;
   disabled?: boolean;
   error?: string;
+  allOptionLabel?: string;
 }
+
+const removeVietnameseTones = (str: string): string => {
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .trim();
+};
+
+const getAcronym = (str: string): string => {
+  return str
+    .split(/\s+/)
+    .map((word) => word[0] || '')
+    .join('')
+    .toLowerCase();
+};
 
 export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   options = [],
@@ -27,6 +46,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   className = '',
   disabled = false,
   error,
+  allOptionLabel = '-- Tất cả --',
 }) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -39,8 +59,16 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
 
   const filteredOptions = useMemo(() => {
     if (!searchTerm.trim()) return options;
-    const lower = searchTerm.toLowerCase();
-    return options.filter((opt) => opt.label.toLowerCase().includes(lower));
+    const cleanSearch = removeVietnameseTones(searchTerm);
+    return options.filter((opt) => {
+      const cleanLabel = removeVietnameseTones(opt.label);
+      const acronym = removeVietnameseTones(getAcronym(opt.label));
+      return (
+        cleanLabel.includes(cleanSearch) ||
+        acronym.includes(cleanSearch) ||
+        opt.label.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    });
   }, [options, searchTerm]);
 
   useEffect(() => {
@@ -77,19 +105,19 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     setSearchTerm('');
   };
 
-  const py = size === 'sm' ? 'py-1' : 'py-2.5';
+  const py = size === 'sm' ? 'py-1' : size === 'md' ? 'py-1.5' : 'py-2.5';
   const px = size === 'sm' ? 'px-2' : 'px-3';
   const roundedClass = size === 'sm' ? 'rounded' : 'rounded-lg';
-  const textClass = size === 'sm' ? 'text-[11px]' : 'text-sm';
-  const minHClass = size === 'sm' ? '' : 'min-h-[42px]';
+  const textClass = size === 'sm' ? 'text-[11px]' : size === 'md' ? 'text-xs font-medium' : 'text-sm';
+  const minHClass = size === 'sm' ? '' : size === 'md' ? 'min-h-[34px]' : 'min-h-[42px]';
 
   return (
     <div ref={containerRef} className={`relative w-full ${className}`}>
       <div
         onClick={() => !disabled && setIsOpen((prev) => !prev)}
         className={`w-full ${px} ${py} border ${
-          error ? 'border-red-500' : 'border-gray-300'
-        } ${roundedClass} ${textClass} ${minHClass} font-normal text-gray-700 bg-white cursor-pointer flex items-center justify-between transition-colors hover:border-gray-400 focus:outline-none ${
+          error ? 'border-red-500' : 'border-gray-200'
+        } ${roundedClass} ${textClass} ${minHClass} text-gray-700 bg-white cursor-pointer flex items-center justify-between transition-colors hover:border-gray-400 focus:outline-none shadow-xs ${
           disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''
         }`}
       >
@@ -105,7 +133,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
             <button
               type="button"
               onClick={handleClear}
-              className="text-gray-400 hover:text-gray-600 focus:outline-none"
+              className="text-gray-400 hover:text-gray-600 focus:outline-none p-0.5"
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -126,7 +154,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
       </div>
 
       {isOpen && !disabled && (
-        <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded shadow-lg overflow-hidden max-h-60 flex flex-col">
+        <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden max-h-60 flex flex-col">
           <div className="p-1.5 border-b border-gray-100 bg-gray-50">
             <input
               ref={inputRef}
@@ -146,7 +174,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
                 !value ? 'bg-blue-50 font-medium text-blue-600' : ''
               }`}
             >
-              -- Tất cả --
+              {allOptionLabel}
             </div>
             {filteredOptions.length > 0 ? (
               filteredOptions.map((opt) => (

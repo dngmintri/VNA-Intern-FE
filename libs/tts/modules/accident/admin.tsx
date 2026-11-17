@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '@/libs/core/api/axios';
 import { AccidentReportSheet, RelationalReport, ReportStatistic } from './components/AccidentReportSheet';
@@ -9,6 +9,7 @@ import { useHasPermission } from '@/libs/shared/hooks/useHasPermission';
 import { useRouter } from 'next/navigation';
 import { reportApi, ReportPeriod as ApiReportPeriod } from './services/report.api';
 import { DatePickerInput } from '@/libs/shared/components/DatePickerInput';
+import { SearchableSelect } from '../company/components/SearchableSelect';
 
 interface Province {
   id: number;
@@ -400,6 +401,7 @@ export const AccidentAdmin = () => {
   const [availableYears, setAvailableYears] = useState<number[]>([2023, 2024, 2025, 2026]);
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [wards, setWards] = useState<Ward[]>([]);
+  const [loadingWards, setLoadingWards] = useState<boolean>(false);
 
   // State cấu hình đợt báo cáo mới
   const [showCreateConfigModal, setShowCreateConfigModal] = useState<boolean>(false);
@@ -474,28 +476,44 @@ export const AccidentAdmin = () => {
 
   useEffect(() => {
     const fetchWards = async () => {
+      setSelectedWard('');
       if (!selectedProvince) {
         setWards([]);
-        setSelectedWard('');
         return;
       }
       const matched = Array.isArray(provinces) ? provinces.find((p: Province) => p.name === selectedProvince) : undefined;
       if (!matched) {
         setWards([]);
-        setSelectedWard('');
         return;
       }
+      setLoadingWards(true);
       try {
         const res = await api.get(`/location/provinces/${matched.id}/wards`);
         const wardList = res?.data?.value || (Array.isArray(res?.data) ? res.data : []);
         setWards(Array.isArray(wardList) ? wardList : []);
-        setSelectedWard('');
       } catch (err) {
         console.error('Lỗi khi tải danh sách phường/xã:', err);
+        setWards([]);
+      } finally {
+        setLoadingWards(false);
       }
     };
     fetchWards();
   }, [selectedProvince, provinces]);
+
+  const provinceOptions = useMemo(() => {
+    return (Array.isArray(provinces) ? provinces : []).map((prov: Province) => ({
+      value: prov.name,
+      label: prov.name,
+    }));
+  }, [provinces]);
+
+  const wardOptions = useMemo(() => {
+    return (Array.isArray(wards) ? wards : []).map((w: Ward) => ({
+      value: w.name,
+      label: w.name,
+    }));
+  }, [wards]);
 
   useEffect(() => {
     const fetchPeriods = async () => {
@@ -1131,29 +1149,35 @@ export const AccidentAdmin = () => {
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex gap-4">
           <div className="flex-1">
             <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Tỉnh/ thành phố</label>
-            <select
+            <SearchableSelect
+              options={provinceOptions}
               value={selectedProvince}
-              onChange={(e) => setSelectedProvince(e.target.value)}
-              className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-medium text-gray-700 bg-white focus:outline-none focus:border-blue-500 cursor-pointer shadow-sm"
-            >
-              <option value="">Chọn tỉnh/ thành phố</option>
-              {Array.isArray(provinces) && provinces.map((prov: Province) => (
-                <option key={prov.id} value={prov.name}>{prov.name}</option>
-              ))}
-            </select>
+              onChange={(val) => {
+                setSelectedProvince(val);
+                setSelectedWard('');
+              }}
+              placeholder="Chọn tỉnh/ thành phố"
+              allOptionLabel="-- Tất cả tỉnh/ thành phố --"
+              size="md"
+            />
           </div>
           <div className="flex-1">
             <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Phường/ Xã</label>
-            <select
+            <SearchableSelect
+              options={wardOptions}
               value={selectedWard}
-              onChange={(e) => setSelectedWard(e.target.value)}
-              className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-medium text-gray-700 bg-white focus:outline-none focus:border-blue-500 cursor-pointer shadow-sm"
-            >
-              <option value="">Tất cả phường/ xã</option>
-              {Array.isArray(wards) && wards.map((w: Ward) => (
-                <option key={w.id} value={w.name}>{w.name}</option>
-              ))}
-            </select>
+              onChange={(val) => setSelectedWard(val)}
+              placeholder={
+                !selectedProvince
+                  ? 'Vui lòng chọn tỉnh/ thành phố trước'
+                  : loadingWards
+                  ? 'Đang tải phường/ xã...'
+                  : 'Tất cả phường/ xã'
+              }
+              allOptionLabel="-- Tất cả phường/ xã --"
+              disabled={!selectedProvince || loadingWards}
+              size="md"
+            />
           </div>
         </div>
 
