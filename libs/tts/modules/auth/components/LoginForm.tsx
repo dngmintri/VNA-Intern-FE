@@ -55,12 +55,12 @@ export const LoginForm = () => {
 
         <div className="relative mt-2">
           <label className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-semibold text-gray-500 z-10 select-none">
-            Tên tài khoản *
+            Tên tài khoản / Mã số thuế / Email *
           </label>
           <input
             {...register('username')}
             type="text"
-            placeholder="nguyenvana"
+            placeholder="Nhập tên tài khoản, mã số thuế hoặc email"
             className={`w-full px-4 py-2.5 bg-white border rounded-lg focus:outline-none focus:border-blue-500 text-sm text-gray-900 placeholder:text-gray-400 transition-all ${
               errors.username ? 'border-red-500' : 'border-gray-300'
             }`}
