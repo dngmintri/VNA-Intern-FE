@@ -23,6 +23,8 @@ export interface ReportItem {
   year: number;
   period: ReportPeriod;
   status: ReportStatus;
+  isExpired?: boolean;
+  isLocked?: boolean;
   totalEmployees?: number;
   totalFemaleEmployees?: number;
   totalQuyLuong?: number;

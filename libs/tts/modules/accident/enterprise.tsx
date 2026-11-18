@@ -5,6 +5,21 @@ import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { reportApi, ReportItem } from './services/report.api';
 
+const getPeriodLabel = (item?: { period?: string | null; configName?: string | null } | null): string => {
+  if (!item) return '6 tháng';
+  const periodStr = (item.period || '').toLowerCase();
+  const configNameStr = (item.configName || '').toLowerCase();
+
+  const isWholeYear =
+    periodStr === '12 months' ||
+    periodStr === 'cả năm' ||
+    periodStr.includes('12') ||
+    configNameStr.includes('cả năm') ||
+    configNameStr.includes('12 tháng');
+
+  return isWholeYear ? 'Cả năm' : '6 tháng';
+};
+
 export const Enterprise: React.FC = () => {
   const router = useRouter();
 
@@ -111,17 +126,18 @@ export const Enterprise: React.FC = () => {
                   </td>
                 </tr>
               ) : reports.length > 0 ? (
-                reports.map((item) => {
+                reports.map((item, index) => {
                   const isNotReporting = item.status === 'not_reporting' || item.status === 'pending';
                   const isDraft = item.status === 'reporting';
                   const isReceived = item.status === 'received';
                   const isApproved = item.status === 'approved';
                   const isRejected = item.status === 'rejected';
-                  const isExpired = item.status === 'expired';
-                  const periodLabel = (item.period?.includes('6') || item.configName?.includes('6')) ? '6 tháng' : 'Cả năm';
+                  const isLocked = !!item.isLocked;
+                  const isExpired = item.status === 'expired' || !!item.isExpired;
+                  const periodLabel = getPeriodLabel(item);
 
                   return (
-                    <tr key={item.id || item.configId || Math.random()} className="hover:bg-gray-50/60 transition-colors h-14">
+                    <tr key={item.id || item.configId || `report-${index}`} className="hover:bg-gray-50/60 transition-colors h-14">
                       <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center gap-2">
                           {/* Xem chi tiết (khi đã có báo cáo) */}
@@ -145,8 +161,8 @@ export const Enterprise: React.FC = () => {
                             </span>
                           )}
 
-                          {/* Chỉnh sửa / Bắt đầu nhập (Khi chưa báo cáo, đang lập báo cáo hoặc bị từ chối; không cho sửa khi đã quá hạn) */}
-                          {(isNotReporting || isDraft || isRejected) && !isExpired && (
+                          {/* Chỉnh sửa / Bắt đầu nhập (Khi chưa báo cáo, đang lập báo cáo hoặc bị từ chối; không cho sửa khi đã quá hạn hoặc đã khóa) */}
+                          {(isNotReporting || isDraft || isRejected) && !isExpired && !isLocked && (
                             <button
                               title={isNotReporting ? 'Bắt đầu lập báo cáo' : isRejected ? 'Chỉnh sửa lại số liệu (Bị từ chối)' : 'Chỉnh sửa số liệu'}
                               onClick={() => {
@@ -186,7 +202,7 @@ export const Enterprise: React.FC = () => {
                             if (isRejected) setRejectionModalItem(item);
                           }}
                           className={`px-3 py-1 rounded-full text-[10px] font-bold border inline-flex items-center gap-1 ${
-                            isExpired
+                            isLocked || isExpired
                               ? 'bg-gray-100 text-gray-500 border-gray-300'
                               : isNotReporting
                               ? 'bg-slate-100 text-slate-600 border-slate-300'
@@ -201,7 +217,9 @@ export const Enterprise: React.FC = () => {
                               : 'bg-gray-50 text-gray-500 border-gray-200'
                           }`}
                           title={
-                            isExpired
+                            isLocked
+                              ? 'Kỳ báo cáo đã bị đóng (khóa)'
+                              : isExpired
                               ? 'Kỳ báo cáo đã kết thúc (quá hạn)'
                               : isRejected
                               ? 'Bấm để xem chi tiết lý do từ chối'
@@ -213,7 +231,9 @@ export const Enterprise: React.FC = () => {
                               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
                             </svg>
                           )}
-                          {isExpired
+                          {isLocked
+                            ? 'Đã khóa'
+                            : isExpired
                             ? 'Quá hạn'
                             : isNotReporting
                             ? 'Chưa báo cáo'
@@ -300,7 +320,7 @@ export const Enterprise: React.FC = () => {
               <div>
                 <h3 className="font-bold text-gray-800 text-sm">Lý do từ chối báo cáo</h3>
                 <p className="text-xs text-gray-500">
-                  {rejectionModalItem.period === '6 months' || rejectionModalItem.period?.includes('6') ? '6 tháng' : 'Cả năm'} - Năm {rejectionModalItem.year}
+                  {getPeriodLabel(rejectionModalItem)} - Năm {rejectionModalItem.year}
                 </p>
               </div>
             </div>
